@@ -1,0 +1,96 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>旁注追问设置</title>
+    <link rel="stylesheet" href="./popup.css" />
+  </head>
+  <body>
+    <h1>旁注追问设置</h1>
+    <p class="cgia-subtitle">纯插件版 · 无需本地后端</p>
+
+    <div class="cgia-form-row">
+      <label>模式</label>
+      <select id="mode">
+        <option value="mock">Mock（体验 UI，无需 Key）</option>
+        <option value="api">API（调用大模型）</option>
+      </select>
+    </div>
+
+    <div class="cgia-form-row">
+      <label>服务商预设</label>
+      <select id="providerPreset">
+        <option value="deepseek">DeepSeek</option>
+        <option value="openai">OpenAI</option>
+        <option value="custom">自定义</option>
+      </select>
+    </div>
+
+    <div class="cgia-form-row">
+      <label>API Key</label>
+      <input type="password" id="apiKey" placeholder="sk-..." autocomplete="off" />
+    </div>
+
+    <div class="cgia-form-row">
+      <label>模型名称</label>
+      <input type="text" id="apiModel" placeholder="deepseek-chat" />
+    </div>
+
+    <div class="cgia-form-row">
+      <label>API 地址（Base URL）</label>
+      <input type="text" id="apiBaseUrl" placeholder="https://api.deepseek.com" />
+    </div>
+
+    <div class="cgia-form-row cgia-inline-actions">
+      <button type="button" id="testBtn" class="cgia-secondary-btn">测试连接</button>
+      <span id="testMsg" class="cgia-inline-msg"></span>
+    </div>
+
+    <hr class="cgia-divider" />
+
+    <div class="cgia-form-row">
+      <label>请求超时（毫秒）</label>
+      <input type="number" id="requestTimeoutMs" min="5000" max="120000" step="1000" />
+    </div>
+
+    <div class="cgia-form-row">
+      <label>选中文本最大长度</label>
+      <input type="number" id="maxSelectedTextLength" min="100" max="10000" />
+    </div>
+
+    <div class="cgia-form-row">
+      <label>上下文最大长度</label>
+      <input type="number" id="surroundingTextMaxLength" min="200" max="5000" />
+    </div>
+
+    <div class="cgia-form-row">
+      <label>
+        <input type="checkbox" id="autoRestoreNotes" />
+        刷新后自动恢复旁注
+      </label>
+    </div>
+
+    <div class="cgia-form-row">
+      <label>
+        <input type="checkbox" id="includeFullMessage" />
+        附带选区所在整条回答
+      </label>
+    </div>
+
+    <div class="cgia-form-row">
+      <label>
+        <input type="checkbox" id="includeMainConversation" />
+        附带最近几轮主对话
+      </label>
+    </div>
+
+    <p class="cgia-tip">
+      API Key 仅保存在本机浏览器中，用于向你所选的服务商发起请求。插件只会发送你主动选中的文本和你输入的问题（以及可选的上下文）。
+    </p>
+
+    <button id="saveBtn">保存设置</button>
+    <p id="saveMsg" class="cgia-save-msg"></p>
+
+    <script src="./popup.js"></script>
+  </body>
+</html>

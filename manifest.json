@@ -1,0 +1,40 @@
+{
+  "manifest_version": 3,
+  "name": "ChatGPT Inline Note Assistant",
+  "version": "1.0.0",
+  "description": "在 ChatGPT 页面选中文字，用便签窗口旁注追问（纯插件版，无需本地后端）。",
+  "permissions": ["storage"],
+  "host_permissions": [
+    "https://chatgpt.com/*",
+    "https://chat.openai.com/*",
+    "https://*/*",
+    "http://127.0.0.1/*",
+    "http://localhost/*"
+  ],
+  "background": {
+    "service_worker": "background/service_worker.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://chat.openai.com/*"
+      ],
+      "js": [
+        "content/marked.min.js",
+        "content/storage.js",
+        "content/api_client.js",
+        "content/selection.js",
+        "content/note_manager.js",
+        "content/route_manager.js",
+        "content/content.js"
+      ],
+      "css": ["content/content.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "旁注追问设置"
+  }
+}

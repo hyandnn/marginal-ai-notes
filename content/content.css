@@ -1,0 +1,326 @@
+.cgia-hidden {
+  display: none !important;
+}
+
+/*
+ * 便签 UI 固定浅色主题，避免 ChatGPT 深色模式下继承白字导致
+ * 「白字 + 浅黄/白底」不可读。
+ */
+.cgia-note {
+  color-scheme: only light;
+  color: #1a1a1a;
+}
+
+.cgia-note-title {
+  color: #1a1a1a;
+}
+
+.cgia-message-user,
+.cgia-message-assistant {
+  color: #1a1a1a;
+}
+
+.cgia-message-assistant :is(p, li, ul, ol, h1, h2, h3, h4, h5, h6, strong, em, span, div, td, th) {
+  color: #1a1a1a;
+}
+
+.cgia-message-assistant blockquote {
+  color: #444;
+}
+
+.cgia-question-input {
+  color: #1a1a1a;
+  background-color: #ffffff;
+}
+
+.cgia-question-input::placeholder {
+  color: #888;
+}
+
+/* ---------- 选区悬浮按钮 ---------- */
+.cgia-selection-button {
+  position: absolute;
+  z-index: 2147483647;
+  padding: 5px 10px;
+  font-size: 13px;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #1a73e8;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  white-space: nowrap;
+}
+
+.cgia-selection-button:hover {
+  background: #1558b0;
+}
+
+/* ---------- 旁注窗口 ---------- */
+.cgia-note {
+  position: fixed;
+  width: 360px;
+  height: 420px;
+  min-width: 280px;
+  min-height: 180px;
+  max-width: 600px;
+  max-height: 80vh;
+  resize: both; /* 右下角拖拽缩放 */
+  border-radius: 12px;
+  background: #fffbe8;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+  z-index: 2147483000;
+  overflow: hidden;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 14px;
+  display: flex;
+  flex-direction: column;
+  /* color / color-scheme 见文件顶部「固定浅色主题」块 */
+}
+
+.cgia-note-header {
+  height: 40px;
+  flex-shrink: 0;
+  cursor: move;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px;
+  background: #f5e97a;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  user-select: none;
+}
+
+.cgia-note-title {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cgia-note-collapse,
+.cgia-note-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #555;
+  line-height: 1;
+}
+
+.cgia-note-collapse:hover,
+.cgia-note-close:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.cgia-note-body {
+  padding: 10px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.cgia-quote {
+  max-height: 80px;
+  overflow: auto;
+  font-size: 12px;
+  color: #555;
+  padding: 6px 8px;
+  border-left: 3px solid #d0b35a;
+  background: rgba(255, 255, 255, 0.55);
+  margin-bottom: 8px;
+  border-radius: 0 4px 4px 0;
+  flex-shrink: 0;
+}
+
+.cgia-quote-expand {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 4px;
+  font-size: 11px;
+  color: #1a73e8;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.cgia-messages {
+  flex: 1;
+  overflow-y: auto;
+  margin-bottom: 8px;
+}
+
+.cgia-message {
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+.cgia-message-user {
+  background: #e8f0fe;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.cgia-message-assistant {
+  background: rgba(255, 255, 255, 0.7);
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.cgia-input-row {
+  display: flex;
+  gap: 6px;
+  align-items: flex-end;
+  flex-shrink: 0;
+}
+
+.cgia-question-input {
+  flex: 1;
+  min-height: 48px;
+  max-height: 100px;
+  resize: vertical;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 13px;
+  font-family: inherit;
+}
+
+.cgia-question-input:focus {
+  outline: none;
+  border-color: #1a73e8;
+}
+
+.cgia-send-button {
+  padding: 8px 14px;
+  background: #1a73e8;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.cgia-send-button:hover {
+  background: #1558b0;
+}
+
+.cgia-send-button:disabled {
+  background: #aaa;
+  cursor: not-allowed;
+}
+
+/* 折叠状态：只留标题条 */
+.cgia-note.collapsed .cgia-note-body {
+  display: none;
+}
+
+.cgia-note.collapsed {
+  /* 行内样式里有固定 height，必须 !important 才能压过，否则折叠后窗口仍占原高度 */
+  height: auto !important;
+  min-height: 0;
+  resize: none; /* 折叠时禁用缩放，避免把错误高度存档 */
+}
+
+.cgia-note.collapsed .cgia-note-header {
+  border-bottom: none;
+}
+
+/* ---------- Markdown 渲染样式（仅在 assistant 消息内生效） ---------- */
+.cgia-message-assistant p {
+  margin: 0 0 6px;
+  line-height: 1.6;
+}
+
+.cgia-message-assistant p:last-child {
+  margin-bottom: 0;
+}
+
+.cgia-message-assistant h1,
+.cgia-message-assistant h2,
+.cgia-message-assistant h3 {
+  font-size: 13px;
+  font-weight: 700;
+  margin: 8px 0 4px;
+}
+
+.cgia-message-assistant ul,
+.cgia-message-assistant ol {
+  margin: 4px 0 4px 18px;
+  padding: 0;
+}
+
+.cgia-message-assistant li {
+  margin-bottom: 2px;
+  line-height: 1.5;
+}
+
+.cgia-message-assistant code {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 12px;
+  background: rgba(0, 0, 0, 0.07);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.cgia-message-assistant pre {
+  background: rgba(0, 0, 0, 0.07);
+  border-radius: 6px;
+  padding: 8px 10px;
+  overflow-x: auto;
+  margin: 6px 0;
+}
+
+.cgia-message-assistant pre code {
+  background: none;
+  padding: 0;
+  font-size: 12px;
+}
+
+.cgia-message-assistant blockquote {
+  border-left: 3px solid #d0b35a;
+  margin: 4px 0;
+  padding: 2px 8px;
+  color: #666;
+}
+
+.cgia-message-assistant strong {
+  font-weight: 700;
+}
+
+.cgia-message-assistant em {
+  font-style: italic;
+}
+
+.cgia-message-assistant a {
+  color: #1a73e8;
+  text-decoration: underline;
+}
+
+.cgia-message-assistant table {
+  border-collapse: collapse;
+  font-size: 12px;
+  margin: 6px 0;
+}
+
+.cgia-message-assistant th,
+.cgia-message-assistant td {
+  border: 1px solid #ccc;
+  padding: 3px 8px;
+}
+
+/* ---------- 错误提示 ---------- */
+.cgia-error-msg {
+  color: #c0392b;
+  font-size: 12px;
+  padding: 4px 0;
+}
