@@ -302,6 +302,8 @@
       const payload = {
         noteId: note.noteId,
         pageUrl: note.pageUrl,
+        siteId: note.siteId || "",
+        siteName: note.siteName || "",
         selectedText: note.selectedText,
         surroundingText: note.surroundingText,
         fullMessageText: note.fullMessageText || "",
@@ -391,6 +393,8 @@
     const note = {
       noteId: createNoteId(),
       pageUrl: location.href,
+      siteId: selectionInfo.siteId || "",
+      siteName: selectionInfo.siteName || "",
       selectedText: selectionInfo.selectedText,
       selectedTextHash: selectionInfo.selectedTextHash,
       surroundingText: selectionInfo.surroundingText,

@@ -1,12 +1,14 @@
 {
   "manifest_version": 3,
-  "name": "ChatGPT Inline Note Assistant",
-  "version": "1.0.0",
-  "description": "在 ChatGPT 页面选中文字，用便签窗口旁注追问（纯插件版，无需本地后端）。",
+  "name": "Agent Sidenote",
+  "version": "1.1.0",
+  "description": "在 AI 对话网页选中文字，用便签旁注追问。支持 ChatGPT、豆包（纯插件，无需后端）。",
   "permissions": ["storage"],
   "host_permissions": [
     "https://chatgpt.com/*",
     "https://chat.openai.com/*",
+    "https://www.doubao.com/*",
+    "https://doubao.com/*",
     "https://*/*",
     "http://127.0.0.1/*",
     "http://localhost/*"
@@ -18,9 +20,15 @@
     {
       "matches": [
         "https://chatgpt.com/*",
-        "https://chat.openai.com/*"
+        "https://chat.openai.com/*",
+        "https://www.doubao.com/*",
+        "https://doubao.com/*"
       ],
       "js": [
+        "content/adapters/shared.js",
+        "content/adapters/index.js",
+        "content/adapters/chatgpt.js",
+        "content/adapters/doubao.js",
         "content/marked.min.js",
         "content/storage.js",
         "content/api_client.js",

@@ -2,6 +2,8 @@
   let selectionButtonEl = null;
   let currentSelectionInfo = null;
 
+  const { truncateAroundSelection } = window.CGIAAdapterShared;
+
   function hideSelectionButton() {
     if (selectionButtonEl) {
       selectionButtonEl.remove();
@@ -15,6 +17,10 @@
       selectionButtonEl.remove();
       selectionButtonEl = null;
     }
+  }
+
+  function getAdapter() {
+    return window.CGIAAdapters.getCurrentAdapter();
   }
 
   function shouldIgnoreSelection(selection) {
@@ -35,6 +41,9 @@
     if (el.closest('[contenteditable="true"]')) return true;
     if (el.closest(".cgia-note")) return true;
     if (el.closest(".cgia-selection-button")) return true;
+
+    const adapter = getAdapter();
+    if (adapter?.shouldIgnoreElement?.(el)) return true;
 
     return false;
   }
@@ -68,72 +77,6 @@
     }
   }
 
-  function truncateAroundSelection(surroundingText, selectedText, maxLength) {
-    const text = surroundingText.trim();
-    if (text.length <= maxLength) return text;
-
-    const idx = text.indexOf(selectedText);
-    if (idx === -1) {
-      return text.slice(0, maxLength) + "\n\n[上下文已截断]";
-    }
-
-    const half = Math.floor((maxLength - selectedText.length) / 2);
-    const start = Math.max(0, idx - half);
-    const end = Math.min(text.length, idx + selectedText.length + half);
-
-    const prefix = start > 0 ? "[前文已截断]\n" : "";
-    const suffix = end < text.length ? "\n[后文已截断]" : "";
-
-    return prefix + text.slice(start, end) + suffix;
-  }
-
-  function truncateSimple(text, maxLength) {
-    const t = (text || "").trim();
-    if (t.length <= maxLength) return t;
-    return t.slice(0, maxLength) + "\n[已截断]";
-  }
-
-  // 选区所在的整条 ChatGPT 消息节点（依赖 data-message-author-role 属性，可能随官方改版失效）
-  function getMessageElement(selection) {
-    try {
-      const node = selection.anchorNode;
-      const el = node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
-      return el ? el.closest("[data-message-author-role]") : null;
-    } catch (e) {
-      return null;
-    }
-  }
-
-  function getFullMessageText(messageEl, selectedText, maxLength) {
-    if (!messageEl) return "";
-    try {
-      return truncateAroundSelection(messageEl.innerText || "", selectedText, maxLength);
-    } catch (e) {
-      return "";
-    }
-  }
-
-  // 选区所在消息之前的最近 maxMessages 条主对话（user/assistant 交替）
-  function getMainConversation(messageEl, maxMessages, perMessageMax) {
-    try {
-      const all = Array.from(document.querySelectorAll("[data-message-author-role]"));
-      if (all.length === 0) return [];
-
-      let endIdx = messageEl ? all.indexOf(messageEl) : all.length;
-      if (endIdx === -1) endIdx = all.length;
-
-      return all
-        .slice(Math.max(0, endIdx - maxMessages), endIdx)
-        .map((el) => ({
-          role: el.getAttribute("data-message-author-role") === "user" ? "user" : "assistant",
-          content: truncateSimple(el.innerText, perMessageMax)
-        }))
-        .filter((m) => m.content);
-    } catch (e) {
-      return [];
-    }
-  }
-
   function hashStringFNV1a(str) {
     let hash = 0x811c9dc5;
     for (let i = 0; i < str.length; i++) {
@@ -152,6 +95,9 @@
     ) {
       return;
     }
+
+    const adapter = getAdapter();
+    if (!adapter) return;
 
     const selection = window.getSelection();
     if (!selection) return;
@@ -172,17 +118,24 @@
     const range = selection.getRangeAt(0);
     const rect = range.getBoundingClientRect();
 
-    const messageEl = getMessageElement(selection);
+    const messageEl = adapter.getMessageElement(selection);
 
     currentSelectionInfo = {
+      siteId: adapter.id,
+      siteName: adapter.name,
       selectedText: text,
       selectedTextHash: hashStringFNV1a(text),
       surroundingText: getSurroundingText(selection, settings.surroundingTextMaxLength),
-      fullMessageText: settings.includeFullMessage
-        ? getFullMessageText(messageEl, text, settings.fullMessageMaxLength)
-        : "",
+      fullMessageText:
+        settings.includeFullMessage && messageEl
+          ? adapter.getMessageText(messageEl, text, settings.fullMessageMaxLength)
+          : "",
       mainConversation: settings.includeMainConversation
-        ? getMainConversation(messageEl, settings.mainConversationMaxMessages, 800)
+        ? adapter.getMainConversation(
+            messageEl,
+            settings.mainConversationMaxMessages,
+            800
+          )
         : [],
       rect
     };
@@ -216,7 +169,7 @@
           window.CGIANoteManager.createNote(currentSelectionInfo);
         }
       } catch (err) {
-        console.error("[CGIA] createNote failed:", err);
+        console.error("[CGIA-SA] createNote failed:", err);
       }
       hideSelectionButton();
     });
@@ -226,6 +179,14 @@
   }
 
   function initSelection() {
+    const adapter = getAdapter();
+    if (!adapter) {
+      console.log("[CGIA-SA] no site adapter for:", location.hostname);
+      return;
+    }
+
+    console.log("[CGIA-SA] site adapter:", adapter.id);
+
     document.addEventListener("mouseup", onMouseUp);
     document.addEventListener("mousedown", (e) => {
       if (selectionButtonEl && !selectionButtonEl.contains(e.target)) {
@@ -233,7 +194,6 @@
       }
     });
     document.addEventListener("keydown", (e) => {
-      // ESC 仅关闭临时悬浮按钮，不关闭已创建旁注
       if (e.key === "Escape") {
         hideSelectionButton();
       }

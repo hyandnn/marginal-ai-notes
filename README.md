@@ -1,6 +1,8 @@
-# ChatGPT 旁注追问助手（纯插件版）
+# Agent Sidenote
 
-无需 Python、无需本地后端。安装扩展 → 填写 API Key → 在 ChatGPT 页面选中文字即可旁注追问。
+无需 Python、无需本地后端。安装扩展 → 填写 API Key → 在 AI 对话网页选中文字即可旁注追问。
+
+**已支持站点：** ChatGPT · 豆包
 
 > 本目录为独立版本，位于 `chrome-extension/`。原 `extension/` + `backend/` 方案未做任何修改，可继续正常使用。
 
@@ -23,47 +25,24 @@
 4. 填入 **API Key** 和 **模型名称**
 5. 点击 **测试连接**，确认成功后 **保存设置**
 
-**DeepSeek 示例：**
-
-| 字段 | 值 |
-|------|-----|
-| 服务商 | DeepSeek |
-| API Key | 在 [platform.deepseek.com](https://platform.deepseek.com) 申请 |
-| 模型 | `deepseek-chat` |
-| API 地址 | `https://api.deepseek.com` |
-
-**OpenAI 示例：**
-
-| 字段 | 值 |
-|------|-----|
-| 服务商 | OpenAI |
-| API Key | 你的 OpenAI Key |
-| 模型 | `gpt-4.1-mini` |
-| API 地址 | `https://api.openai.com` |
-
-其他 OpenAI 兼容服务（如 Ollama）选「自定义」，填写对应的 Base URL 和模型名即可。
+旁注追问使用的模型与当前页面（ChatGPT / 豆包）无关，由你在这里配置的 API 决定。
 
 ### 3. 使用
 
-1. 打开 [chatgpt.com](https://chatgpt.com)
-2. 在任意回答中 **选中一段文字**
-3. 点击出现的 **「旁注追问」** 按钮
+1. 打开 [chatgpt.com](https://chatgpt.com) 或 [doubao.com](https://www.doubao.com/chat/)
+2. 在任意 **AI 回答** 中选中一段文字（不要选输入框或侧边栏）
+3. 点击 **「旁注追问」**
 4. 在便签窗口中输入问题并发送
-
----
-
-## Mock 模式（无需 Key）
-
-默认是 **Mock 模式**，不填 API Key 也能体验完整 UI：选中文字 → 创建便签 → 发送问题 → 返回固定测试回答。
 
 ---
 
 ## 验证插件已加载
 
-打开 ChatGPT 页面，按 `F12` → Console，应看到：
+打开支持站点，按 `F12` → Console，应看到：
 
 ```
 [CGIA-SA] content script loaded
+[CGIA-SA] site adapter: chatgpt   // 或 doubao
 ```
 
 ---
@@ -71,36 +50,49 @@
 ## 架构说明
 
 ```
-ChatGPT 页面 (Content Script)
+AI 对话页面 (Content Script + 站点适配器)
     ↓ chrome.runtime.sendMessage
 Background Service Worker
     ↓ 组装 prompt + fetch
 大模型 API（DeepSeek / OpenAI / 兼容服务）
 ```
 
-- API Key 存储在 `chrome.storage.local`，仅本机浏览器可读
-- 不经过任何第三方中转服务器
-- 与原 backend 方案使用独立的 storage key，两个版本可同时安装互不干扰
+每个站点有独立 DOM 适配器（`content/adapters/`），便签 UI 与 API 调用逻辑通用。
 
 ---
 
 ## 常见问题
 
-**测试连接失败？**
+**豆包上选中回答没反应？**
 
-- 确认 API Key 正确且有余额
-- 确认模型名称与服务商匹配
-- 本地 Ollama 等需填写 `http://127.0.0.1:11434` 类地址
+- 确认在 `www.doubao.com` 对话页，且选中的是 **AI 回复正文**，不是左侧边栏或底部输入框
+- Console 应显示 `site adapter: doubao`；若没有，请刷新页面并重载扩展
+- 豆包 DOM 会改版，若失效请反馈（见下方「适配器维护」）
 
 **选中文字没出现按钮？**
 
-- 确认在 chatgpt.com 页面
 - 选区至少 2 个字符
-- 在 ChatGPT 输入框内选中不会触发（设计如此）
+- 在输入框 / 侧边栏内选中不会触发
 
 **重载扩展后异常？**
 
-- 刷新 ChatGPT 页面让新代码重新注入
+- 刷新 AI 对话页面让新代码重新注入
+
+---
+
+## 适配器维护（豆包 DOM 改版时）
+
+若豆包更新后旁注失效，请在豆包对话页 `F12` → Console 运行：
+
+```javascript
+// 1. 消息条数
+document.querySelectorAll('[data-message-id]').length
+
+// 2. 选中 AI 回复文字后，看最近的消息节点
+$0?.closest?.('[data-message-id]') || $0?.closest?.('[class*="receive"]')
+```
+
+把输出截图或 HTML 结构发给我们，用于更新 `content/adapters/doubao.js`。
 
 ---
 
@@ -109,8 +101,11 @@ Background Service Worker
 ```
 chrome-extension/
 ├── manifest.json
-├── background/          Service Worker + prompt/LLM 调用
-├── content/             注入 ChatGPT 页面的脚本
-├── popup/               设置面板
+├── background/
+├── content/
+│   ├── adapters/        各站点 DOM 适配（chatgpt.js / doubao.js）
+│   ├── note_manager.js
+│   └── selection.js
+├── popup/
 └── README.md
 ```

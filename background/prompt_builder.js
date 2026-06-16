@@ -29,7 +29,7 @@ ${req.fullMessageText}`;
 ${formatHistory(req.mainConversation)}`;
   }
 
-  return `你是一个阅读旁注助手。用户正在阅读一段 ChatGPT 回答。
+  return `你是一个阅读旁注助手。用户正在阅读一段 AI 对话中的回答内容（来源：${req.siteName || "AI 助手"}）。
 用户选中了其中一小段，并在旁注窗口中围绕这段内容进行多轮追问。
 
 你的任务：
