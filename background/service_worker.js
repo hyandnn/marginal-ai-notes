@@ -1,4 +1,9 @@
-importScripts("prompt_builder.js", "llm_client.js");
+importScripts(
+  "prompt_builder.js",
+  "llm_client.js",
+  "stream_mock.js",
+  "export_helper.js"
+);
 
 const SETTINGS_KEY = "cgia_standalone_settings";
 
@@ -7,7 +12,8 @@ const DEFAULT_SETTINGS = {
   apiKey: "",
   apiModel: "deepseek-chat",
   apiBaseUrl: "https://api.deepseek.com",
-  requestTimeoutMs: 30000
+  requestTimeoutMs: 30000,
+  jsonlRecordDir: "Record"
 };
 
 async function loadSettings(override) {
@@ -31,7 +37,7 @@ function mockAnswer(req) {
   );
 }
 
-async function handleAsk(payload, settingsOverride) {
+async function streamAsk(payload, settingsOverride, emit) {
   if (!payload.userQuestion?.trim()) {
     throw new Error("问题不能为空。");
   }
@@ -42,16 +48,22 @@ async function handleAsk(payload, settingsOverride) {
   const settings = await loadSettings(settingsOverride);
 
   if (settings.mode === "mock") {
-    return {
-      noteId: payload.noteId,
-      answer: mockAnswer(payload),
-      status: "completed"
-    };
+    const answer = mockAnswer(payload);
+    await simulateStream(answer, (delta, full) => emit({ type: "chunk", delta, full }));
+    return answer;
   }
 
   const prompt = buildPrompt(payload);
-  const answer = await askModel(prompt, settings);
+  return askModelStream(prompt, settings, (delta, full) =>
+    emit({ type: "chunk", delta, full })
+  );
+}
 
+async function handleAsk(payload, settingsOverride) {
+  let answer = "";
+  await streamAsk(payload, settingsOverride, (msg) => {
+    if (msg.type === "chunk") answer = msg.full;
+  });
   return {
     noteId: payload.noteId,
     answer,
@@ -75,6 +87,45 @@ async function handleTestConnection(settingsOverride) {
   };
 }
 
+async function handleDownloadJsonl(records, filenamePrefix, topic, settingsOverride) {
+  if (!records?.length) {
+    throw new Error("没有可导出的记录。");
+  }
+  const settings = await loadSettings(settingsOverride);
+  const filename = makeExportFilename(filenamePrefix || "notes", topic);
+  const content = recordsToJsonlContent(records);
+  await downloadJsonlContent(content, filename, settings.jsonlRecordDir);
+  return { filename, count: records.length };
+}
+
+chrome.runtime.onConnect.addListener((port) => {
+  if (port.name !== "ask-stream") return;
+
+  port.onMessage.addListener((message) => {
+    if (message.type !== "ASK_STREAM") return;
+
+    (async () => {
+      try {
+        const answer = await streamAsk(message.payload, message.settings, (msg) => {
+          try {
+            port.postMessage(msg);
+          } catch (e) {
+            // 端口可能已断开
+          }
+        });
+        port.postMessage({
+          type: "done",
+          noteId: message.payload.noteId,
+          answer,
+          status: "completed"
+        });
+      } catch (err) {
+        port.postMessage({ type: "error", error: err.message || String(err) });
+      }
+    })();
+  });
+});
+
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.type === "ASK") {
     handleAsk(message.payload, message.settings)
@@ -85,6 +136,18 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
   if (message.type === "TEST_CONNECTION") {
     handleTestConnection(message.settings)
+      .then(sendResponse)
+      .catch((err) => sendResponse({ error: err.message || String(err) }));
+    return true;
+  }
+
+  if (message.type === "DOWNLOAD_JSONL") {
+    handleDownloadJsonl(
+      message.records,
+      message.filenamePrefix,
+      message.topic,
+      message.settings
+    )
       .then(sendResponse)
       .catch((err) => sendResponse({ error: err.message || String(err) }));
     return true;

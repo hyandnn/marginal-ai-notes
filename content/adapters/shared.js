@@ -39,10 +39,32 @@
     return node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
   }
 
+  function buildSessionContext(adapter, mainConversation) {
+    const firstUser = (mainConversation || []).find((m) => m.role === "user");
+    const mainQuestion = (firstUser?.content || "").trim();
+
+    let mainTopic = "";
+    if (adapter?.getConversationTitle) {
+      mainTopic = (adapter.getConversationTitle() || "").trim();
+    }
+    if (!mainTopic && mainQuestion) {
+      mainTopic = mainQuestion.slice(0, 80);
+    }
+    if (!mainTopic) {
+      mainTopic = "未命名对话";
+    }
+
+    return {
+      mainTopic,
+      mainQuestion: mainQuestion.slice(0, 500)
+    };
+  }
+
   window.CGIAAdapterShared = {
     truncateAroundSelection,
     truncateSimple,
     sortByDocumentOrder,
-    selectionAnchorElement
+    selectionAnchorElement,
+    buildSessionContext
   };
 })();

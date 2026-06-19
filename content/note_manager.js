@@ -2,7 +2,7 @@
   const activeNotes = new Map(); // noteId -> { note, el }
   let topZIndex = 2147483000;
 
-  const DEFAULT_SIZE = { width: 360, height: 420 };
+  const DEFAULT_SIZE = { width: 380, height: 480 };
 
   // ---------- helpers ----------
 
@@ -105,9 +105,65 @@
     }
     container.appendChild(div);
     container.scrollTop = container.scrollHeight;
+    return div;
   }
 
-  // ---------- DOM ----------
+  function appendStreamingAssistant(container) {
+    const div = document.createElement("div");
+    div.className = "cgia-message cgia-message-assistant cgia-message-streaming";
+
+    const textSpan = document.createElement("span");
+    textSpan.className = "cgia-stream-text";
+    textSpan.textContent = "▍";
+
+    div.appendChild(textSpan);
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+
+    return { div, textSpan, container };
+  }
+
+  function updateStreamingAssistant(streamEl, fullText) {
+    if (!streamEl) return;
+    streamEl.textSpan.textContent = fullText + "▍";
+    streamEl.container.scrollTop = streamEl.container.scrollHeight;
+  }
+
+  function finalizeStreamingAssistant(streamEl, fullText) {
+    if (!streamEl) return;
+    streamEl.div.classList.remove("cgia-message-streaming");
+    streamEl.div.replaceChildren();
+    streamEl.div.appendChild(markdownToFragment(fullText));
+    streamEl.container.scrollTop = streamEl.container.scrollHeight;
+  }
+
+  function removeStreamingAssistant(streamEl) {
+    if (streamEl?.div?.parentNode) {
+      streamEl.div.remove();
+    }
+  }
+
+  function persistNote(note) {
+    note.updatedAt = new Date().toISOString();
+    window.CGIAStorage.saveNote(note);
+  }
+
+  function showSaveFeedback(noteEl, text, isError = false) {
+    const fb = noteEl.querySelector(".cgia-save-feedback");
+    if (!fb) return;
+    fb.textContent = text;
+    fb.style.color = isError ? "#c0392b" : "#2e7d32";
+    setTimeout(() => {
+      fb.textContent = "";
+    }, 2500);
+  }
+
+  function handleSaveAsNote(noteEl, note) {
+    const record = window.CGIANoteSchema.noteToJsonlRecord(note);
+    window.CGIAExport.downloadJsonl([record], "note", note.mainTopic || note.selectedText)
+      .then(() => showSaveFeedback(noteEl, "已保存到 Record 目录"))
+      .catch((err) => showSaveFeedback(noteEl, err.message, true));
+  }
 
   // chatgpt.com 启用 Trusted Types CSP，innerHTML 赋值会抛 TypeError，
   // 因此窗口 DOM 必须用 createElement 逐个构建。
@@ -141,6 +197,45 @@
     const body = document.createElement("div");
     body.className = "cgia-note-body";
 
+    const meta = document.createElement("div");
+    meta.className = "cgia-note-meta";
+
+    const typeSelect = document.createElement("select");
+    typeSelect.className = "cgia-note-type";
+    typeSelect.title = "笔记类型";
+    window.CGIANoteSchema.NOTE_TYPES.forEach((t) => {
+      const opt = document.createElement("option");
+      opt.value = t.value;
+      opt.textContent = t.label;
+      typeSelect.appendChild(opt);
+    });
+    typeSelect.value = note.noteType || "general";
+
+    const marksRow = document.createElement("div");
+    marksRow.className = "cgia-marks-row";
+    window.CGIANoteSchema.MARKS.forEach((m) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "cgia-mark-btn";
+      btn.dataset.mark = m.value;
+      btn.textContent = m.label;
+      btn.title = `标记：${m.label}`;
+      if ((note.marks || []).includes(m.value)) {
+        btn.classList.add("active");
+      }
+      marksRow.appendChild(btn);
+    });
+
+    const tagsInput = document.createElement("input");
+    tagsInput.type = "text";
+    tagsInput.className = "cgia-tags-input";
+    tagsInput.placeholder = "标签，逗号分隔";
+    tagsInput.value = window.CGIANoteSchema.formatTags(note.tags);
+
+    meta.appendChild(typeSelect);
+    meta.appendChild(marksRow);
+    meta.appendChild(tagsInput);
+
     const quote = document.createElement("div");
     quote.className = "cgia-quote";
 
@@ -149,6 +244,20 @@
 
     const inputRow = document.createElement("div");
     inputRow.className = "cgia-input-row";
+
+    const actionsRow = document.createElement("div");
+    actionsRow.className = "cgia-note-actions";
+
+    const saveNoteBtn = document.createElement("button");
+    saveNoteBtn.type = "button";
+    saveNoteBtn.className = "cgia-save-note-btn";
+    saveNoteBtn.textContent = "Save as Note";
+
+    const saveFeedback = document.createElement("span");
+    saveFeedback.className = "cgia-save-feedback";
+
+    actionsRow.appendChild(saveNoteBtn);
+    actionsRow.appendChild(saveFeedback);
 
     const textarea = document.createElement("textarea");
     textarea.className = "cgia-question-input";
@@ -161,8 +270,10 @@
     inputRow.appendChild(textarea);
     inputRow.appendChild(sendBtn);
 
+    body.appendChild(meta);
     body.appendChild(quote);
     body.appendChild(messages);
+    body.appendChild(actionsRow);
     body.appendChild(inputRow);
 
     el.appendChild(header);
@@ -213,6 +324,45 @@
     });
 
     return el;
+  }
+
+  function initMetaBar(noteEl, note) {
+    const typeSelect = noteEl.querySelector(".cgia-note-type");
+    typeSelect.addEventListener("change", () => {
+      note.noteType = typeSelect.value;
+      persistNote(note);
+    });
+
+    noteEl.querySelectorAll(".cgia-mark-btn").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const mark = btn.dataset.mark;
+        if (!note.marks) note.marks = [];
+        const idx = note.marks.indexOf(mark);
+        if (idx >= 0) {
+          note.marks.splice(idx, 1);
+          btn.classList.remove("active");
+        } else {
+          note.marks.push(mark);
+          btn.classList.add("active");
+        }
+        persistNote(note);
+      });
+    });
+
+    const tagsInput = noteEl.querySelector(".cgia-tags-input");
+    const saveTags = () => {
+      note.tags = window.CGIANoteSchema.parseTagsInput(tagsInput.value);
+      persistNote(note);
+    };
+    tagsInput.addEventListener("change", saveTags);
+    tagsInput.addEventListener("blur", saveTags);
+
+    const saveBtn = noteEl.querySelector(".cgia-save-note-btn");
+    saveBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      handleSaveAsNote(noteEl, note);
+    });
   }
 
   // ---------- interactions ----------
@@ -298,6 +448,9 @@
 
     appendMessage(messagesEl, "user", question);
 
+    const streamEl = appendStreamingAssistant(messagesEl);
+    let answer = "";
+
     try {
       const payload = {
         noteId: note.noteId,
@@ -309,23 +462,27 @@
         fullMessageText: note.fullMessageText || "",
         mainConversation: note.mainConversation || [],
         userQuestion: question,
-        // conversationHistory 只含已完成的历史，不含当前问题
         conversationHistory: note.messages
           .filter((m) => m.status === "completed" && (m.role === "user" || m.role === "assistant"))
           .map((m) => ({ role: m.role, content: m.content })),
         options: { language: "zh-CN", answerStyle: "clear_and_step_by_step" }
       };
 
-      const res = await window.CGIAApiClient.askModel(payload);
-      appendMessage(messagesEl, "assistant", res.answer);
+      const res = await window.CGIAApiClient.askModelStream(payload, (_delta, full) => {
+        updateStreamingAssistant(streamEl, full);
+      });
+
+      answer = res.answer || "";
+      finalizeStreamingAssistant(streamEl, answer);
 
       note.messages.push(
         { role: "user", content: question, createdAt: new Date().toISOString(), status: "completed" },
-        { role: "assistant", content: res.answer, createdAt: new Date().toISOString(), status: "completed" }
+        { role: "assistant", content: answer, createdAt: new Date().toISOString(), status: "completed" }
       );
       note.updatedAt = new Date().toISOString();
       window.CGIAStorage.saveNote(note);
     } catch (err) {
+      removeStreamingAssistant(streamEl);
       const errDiv = document.createElement("div");
       errDiv.className = "cgia-error-msg";
       errDiv.textContent = `错误：${err.message}`;
@@ -362,6 +519,7 @@
     initCollapse(noteEl, note);
     initClose(noteEl, note);
     initResize(noteEl, note);
+    initMetaBar(noteEl, note);
 
     const sendBtn = noteEl.querySelector(".cgia-send-button");
     const input = noteEl.querySelector(".cgia-question-input");
@@ -375,12 +533,16 @@
   }
 
   function renderNote(note) {
-    if (activeNotes.has(note.noteId)) return activeNotes.get(note.noteId).el;
-    const el = buildNoteDom(note);
+    const normalized = window.CGIANoteSchema.normalizeNote(
+      note,
+      window.CGIAStorage.getSettingsSync()
+    );
+    if (activeNotes.has(normalized.noteId)) return activeNotes.get(normalized.noteId).el;
+    const el = buildNoteDom(normalized);
     document.body.appendChild(el);
     bringNoteToFront(el);
-    wireNote(el, note);
-    activeNotes.set(note.noteId, { note, el });
+    wireNote(el, normalized);
+    activeNotes.set(normalized.noteId, { note: normalized, el });
     return el;
   }
 
@@ -389,6 +551,7 @@
   function createNote(selectionInfo) {
     const now = new Date().toISOString();
     const position = calculateNotePosition(selectionInfo.rect);
+    const settings = window.CGIAStorage.getSettingsSync();
 
     const note = {
       noteId: createNoteId(),
@@ -400,6 +563,11 @@
       surroundingText: selectionInfo.surroundingText,
       fullMessageText: selectionInfo.fullMessageText || "",
       mainConversation: selectionInfo.mainConversation || [],
+      mainTopic: selectionInfo.mainTopic || "",
+      mainQuestion: selectionInfo.mainQuestion || "",
+      noteType: settings.defaultNoteType || "general",
+      marks: [],
+      tags: [],
       status: "visible",
       position,
       size: { ...DEFAULT_SIZE },

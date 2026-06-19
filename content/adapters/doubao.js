@@ -131,6 +131,22 @@
     return false;
   }
 
+  function getConversationTitle() {
+    const active = document.querySelector(
+      '#flow_chat_sidebar a[id^="conversation_"][aria-current="page"], #flow_chat_sidebar a.active'
+    );
+    if (active) {
+      const titleEl = active.querySelector('[class*="title"], [class*="overallTitle"]');
+      const text = (titleEl || active).innerText.trim();
+      if (text) return text;
+    }
+
+    const title = document.title.replace(/\s*[-–—]\s*豆包.*$/i, "").trim();
+    if (title && title !== "豆包") return title;
+
+    return "";
+  }
+
   window.CGIAAdapters.register({
     id: "doubao",
     name: "豆包",
@@ -140,6 +156,7 @@
     getRole,
     getMessageText,
     getMainConversation,
+    getConversationTitle,
     shouldIgnoreElement
   });
 })();

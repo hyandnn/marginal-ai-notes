@@ -15,7 +15,9 @@
     includeFullMessage: true,
     includeMainConversation: true,
     fullMessageMaxLength: 4000,
-    mainConversationMaxMessages: 6
+    mainConversationMaxMessages: 6,
+    defaultNoteType: "general",
+    jsonlRecordDir: "Record"
   };
 
   let cachedSettings = { ...DEFAULT_SETTINGS };
@@ -87,13 +89,34 @@
     const result = await safeGet(NOTES_KEY);
     if (!result) return [];
     const all = result[NOTES_KEY] || {};
-    return Object.values(all).filter((n) => n.pageUrl === pageUrl);
+    return Object.values(all)
+      .filter((n) => n.pageUrl === pageUrl)
+      .map((n) => window.CGIANoteSchema?.normalizeNote(n, cachedSettings) || n);
+  }
+
+  async function loadAllNotes() {
+    const result = await safeGet(NOTES_KEY);
+    if (!result) return [];
+    const all = result[NOTES_KEY] || {};
+    return Object.values(all).map(
+      (n) => window.CGIANoteSchema?.normalizeNote(n, cachedSettings) || n
+    );
+  }
+
+  async function countNotes(filter = {}) {
+    const notes = await loadAllNotes();
+    return notes.filter((n) => {
+      if (filter.pageUrl && n.pageUrl !== filter.pageUrl) return false;
+      if (filter.excludeHidden && n.status === "hidden") return false;
+      return true;
+    }).length;
   }
 
   async function saveNote(note) {
+    const normalized = window.CGIANoteSchema?.normalizeNote(note, cachedSettings) || note;
     const result = await safeGet(NOTES_KEY);
     const all = (result && result[NOTES_KEY]) || {};
-    all[note.noteId] = note;
+    all[normalized.noteId] = normalized;
     await safeSet({ [NOTES_KEY]: all });
   }
 
@@ -109,6 +132,8 @@
     saveSettings,
     getSettingsSync,
     loadNotesForPage,
+    loadAllNotes,
+    countNotes,
     saveNote,
     deleteNote
   };

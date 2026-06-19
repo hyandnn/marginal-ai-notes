@@ -1,0 +1,13 @@
+# 复制为 config.yaml 后修改路径
+
+# Obsidian Vault 根目录（Markdown 输出）
+vault_path: ~/Note
+
+# 相对 vault_path 的 Inbox 子目录（脚本生成的 md 放这里）
+inbox_dir: 00_Inbox
+
+# 输出文件名时区
+timezone: Asia/Shanghai
+
+# 原始 JSONL 目录（与插件导出位置一致）
+record_path: ~/Downloads/Record

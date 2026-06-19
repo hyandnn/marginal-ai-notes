@@ -53,6 +53,23 @@
     return false;
   }
 
+  function getConversationTitle() {
+    const title = document.title.replace(/\s*[-–—]\s*ChatGPT\s*$/i, "").trim();
+    if (title && !/^chatgpt$/i.test(title) && !/^new chat$/i.test(title)) {
+      return title;
+    }
+
+    const active = document.querySelector(
+      'nav a[aria-current="page"], [data-testid="conversation-title"]'
+    );
+    if (active) {
+      const text = (active.innerText || active.textContent || "").trim();
+      if (text) return text;
+    }
+
+    return "";
+  }
+
   window.CGIAAdapters.register({
     id: "chatgpt",
     name: "ChatGPT",
@@ -62,6 +79,7 @@
     getRole,
     getMessageText,
     getMainConversation,
+    getConversationTitle,
     shouldIgnoreElement
   });
 })();

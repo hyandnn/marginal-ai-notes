@@ -126,6 +126,90 @@
   overflow: hidden;
 }
 
+.cgia-note-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+
+.cgia-note-type {
+  width: 100%;
+  font-size: 12px;
+  padding: 4px 6px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  color: #1a1a1a;
+  background: #fff;
+}
+
+.cgia-marks-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.cgia-mark-btn {
+  padding: 2px 8px;
+  font-size: 11px;
+  border: 1px solid #ccc;
+  border-radius: 12px;
+  background: #fff;
+  color: #444;
+  cursor: pointer;
+}
+
+.cgia-mark-btn:hover {
+  background: #f3f3f3;
+}
+
+.cgia-mark-btn.active {
+  background: #1a73e8;
+  border-color: #1a73e8;
+  color: #fff;
+}
+
+.cgia-tags-input {
+  width: 100%;
+  font-size: 12px;
+  padding: 4px 6px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  color: #1a1a1a;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.cgia-note-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  flex-shrink: 0;
+}
+
+.cgia-save-note-btn {
+  padding: 5px 10px;
+  font-size: 12px;
+  background: #fff;
+  color: #1a73e8;
+  border: 1px solid #1a73e8;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.cgia-save-note-btn:hover {
+  background: #e8f0fe;
+}
+
+.cgia-save-feedback {
+  font-size: 11px;
+  color: #2e7d32;
+  line-height: 1.3;
+}
+
 .cgia-quote {
   max-height: 80px;
   overflow: auto;
@@ -166,6 +250,21 @@
   padding: 6px 8px;
   border-radius: 6px;
   font-size: 13px;
+}
+
+.cgia-message-streaming {
+  background: rgba(255, 255, 255, 0.85);
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  border-left: 3px solid #1a73e8;
+}
+
+.cgia-stream-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.5;
+  color: #1a1a1a;
 }
 
 .cgia-message-assistant {

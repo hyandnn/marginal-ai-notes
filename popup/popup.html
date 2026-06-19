@@ -7,7 +7,7 @@
   </head>
   <body>
     <h1>旁注追问设置</h1>
-    <p class="cgia-subtitle">纯插件版 · 无需本地后端</p>
+    <p class="cgia-subtitle">Agent Sidenote</p>
 
     <div class="cgia-form-row">
       <label>模式</label>
@@ -48,6 +48,28 @@
 
     <hr class="cgia-divider" />
 
+    <h2 class="cgia-section-title">笔记采集</h2>
+    <p class="cgia-note-count" id="noteCount">便签：加载中…</p>
+
+    <div class="cgia-form-row">
+      <label>默认笔记类型</label>
+      <select id="defaultNoteType"></select>
+    </div>
+
+    <div class="cgia-form-row">
+      <label>JSONL 保存子目录</label>
+      <input type="text" id="jsonlRecordDir" placeholder="Record" />
+      <span class="cgia-field-hint">相对 Chrome 下载目录，默认保存到 ~/Downloads/Record/</span>
+    </div>
+
+    <div class="cgia-form-row cgia-export-actions">
+      <button type="button" id="exportPageBtn" class="cgia-secondary-btn">导出当前页 JSONL</button>
+      <button type="button" id="exportAllBtn" class="cgia-secondary-btn">导出全部 JSONL</button>
+    </div>
+    <p id="exportMsg" class="cgia-save-msg"></p>
+
+    <hr class="cgia-divider" />
+
     <div class="cgia-form-row">
       <label>请求超时（毫秒）</label>
       <input type="number" id="requestTimeoutMs" min="5000" max="120000" step="1000" />
@@ -85,12 +107,14 @@
     </div>
 
     <p class="cgia-tip">
-      API Key 仅保存在本机浏览器中，用于向你所选的服务商发起请求。插件只会发送你主动选中的文本和你输入的问题（以及可选的上下文）。
+      API Key 仅保存在本机浏览器中。导出的 JSONL 含你选中的文本、旁注追问与标记，格式见 docs/jsonl-schema.md。
     </p>
 
     <button id="saveBtn">保存设置</button>
     <p id="saveMsg" class="cgia-save-msg"></p>
 
+    <script src="../shared/note_schema.js"></script>
+    <script src="../shared/export_jsonl.js"></script>
     <script src="./popup.js"></script>
   </body>
 </html>

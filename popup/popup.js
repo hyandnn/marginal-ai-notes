@@ -1,4 +1,5 @@
 const SETTINGS_KEY = "cgia_standalone_settings";
+const NOTES_KEY = "cgia_standalone_notes";
 
 const PROVIDER_PRESETS = {
   deepseek: {
@@ -24,7 +25,9 @@ const DEFAULT_SETTINGS = {
   includeFullMessage: true,
   includeMainConversation: true,
   fullMessageMaxLength: 4000,
-  mainConversationMaxMessages: 6
+  mainConversationMaxMessages: 6,
+  defaultNoteType: "general",
+  jsonlRecordDir: "Record"
 };
 
 function detectProviderPreset(settings) {
@@ -32,6 +35,18 @@ function detectProviderPreset(settings) {
   if (base.includes("deepseek.com")) return "deepseek";
   if (base.includes("openai.com")) return "openai";
   return "custom";
+}
+
+function populateDefaultNoteTypeSelect(selected) {
+  const sel = document.getElementById("defaultNoteType");
+  sel.innerHTML = "";
+  window.CGIANoteSchema.NOTE_TYPES.forEach((t) => {
+    const opt = document.createElement("option");
+    opt.value = t.value;
+    opt.textContent = t.label;
+    sel.appendChild(opt);
+  });
+  sel.value = selected || "general";
 }
 
 function loadForm(settings) {
@@ -46,6 +61,8 @@ function loadForm(settings) {
   document.getElementById("autoRestoreNotes").checked = settings.autoRestoreNotes;
   document.getElementById("includeFullMessage").checked = settings.includeFullMessage;
   document.getElementById("includeMainConversation").checked = settings.includeMainConversation;
+  populateDefaultNoteTypeSelect(settings.defaultNoteType);
+  document.getElementById("jsonlRecordDir").value = settings.jsonlRecordDir || "Record";
 }
 
 function readForm() {
@@ -70,13 +87,48 @@ function readForm() {
     includeFullMessage: document.getElementById("includeFullMessage").checked,
     includeMainConversation: document.getElementById("includeMainConversation").checked,
     fullMessageMaxLength: 4000,
-    mainConversationMaxMessages: 6
+    mainConversationMaxMessages: 6,
+    defaultNoteType: document.getElementById("defaultNoteType").value,
+    jsonlRecordDir: document.getElementById("jsonlRecordDir").value.trim() || "Record"
   };
 }
 
 function setMessage(el, text, isError = false) {
   el.textContent = text;
   el.style.color = isError ? "#c0392b" : "#2e7d32";
+}
+
+function loadAllNotesFromStorage() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(NOTES_KEY, (result) => {
+      const all = Object.values(result[NOTES_KEY] || {});
+      resolve(
+        all.map((n) => window.CGIANoteSchema.normalizeNote(n, DEFAULT_SETTINGS))
+      );
+    });
+  });
+}
+
+async function refreshNoteCount() {
+  const notes = await loadAllNotesFromStorage();
+  const visible = notes.filter((n) => n.status !== "hidden");
+
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    const url = tabs[0]?.url || "";
+    const pageCount = visible.filter((n) => n.pageUrl === url).length;
+    document.getElementById("noteCount").textContent =
+      `便签：共 ${visible.length} 条（当前页 ${pageCount} 条）`;
+  });
+}
+
+function exportNotesList(notes, prefix) {
+  const visible = notes.filter((n) => n.status !== "hidden");
+  if (visible.length === 0) {
+    throw new Error("没有可导出的便签。");
+  }
+  const records = visible.map((n) => window.CGIANoteSchema.noteToJsonlRecord(n));
+  const topic = records.length === 1 ? records[0].main_topic : "notes";
+  return window.CGIAExport.downloadJsonl(records, prefix, topic).then(() => visible.length);
 }
 
 document.getElementById("providerPreset").addEventListener("change", (e) => {
@@ -89,6 +141,7 @@ document.getElementById("providerPreset").addEventListener("change", (e) => {
 chrome.storage.local.get(SETTINGS_KEY, (result) => {
   const settings = { ...DEFAULT_SETTINGS, ...(result[SETTINGS_KEY] || {}) };
   loadForm(settings);
+  refreshNoteCount();
 });
 
 document.getElementById("saveBtn").addEventListener("click", () => {
@@ -149,5 +202,32 @@ document.getElementById("testBtn").addEventListener("click", () => {
   } catch (e) {
     testBtn.disabled = false;
     setMessage(testMsg, e.message, true);
+  }
+});
+
+document.getElementById("exportAllBtn").addEventListener("click", async () => {
+  const msg = document.getElementById("exportMsg");
+  try {
+    const notes = await loadAllNotesFromStorage();
+    const count = await exportNotesList(notes, "notes");
+    setMessage(msg, `已保存 ${count} 条到 Record 目录。`);
+  } catch (e) {
+    setMessage(msg, e.message, true);
+  }
+});
+
+document.getElementById("exportPageBtn").addEventListener("click", async () => {
+  const msg = document.getElementById("exportMsg");
+  try {
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    const url = tabs[0]?.url;
+    if (!url) throw new Error("无法获取当前页面 URL。");
+
+    const notes = await loadAllNotesFromStorage();
+    const pageNotes = notes.filter((n) => n.pageUrl === url);
+    const count = await exportNotesList(pageNotes, "page");
+    setMessage(msg, `已保存当前页 ${count} 条到 Record 目录。`);
+  } catch (e) {
+    setMessage(msg, e.message, true);
   }
 });

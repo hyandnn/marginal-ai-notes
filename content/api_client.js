@@ -2,7 +2,7 @@
   function sendRuntimeMessage(message) {
     return new Promise((resolve, reject) => {
       if (!chrome.runtime?.id) {
-        reject(new Error("扩展上下文已失效，请刷新 ChatGPT 页面。"));
+        reject(new Error("扩展上下文已失效，请刷新页面。"));
         return;
       }
 
@@ -28,19 +28,62 @@
     });
   }
 
-  async function askModel(payload) {
-    const settings = window.CGIAStorage.getSettingsSync();
+  function askModelStream(payload, onChunk) {
+    return new Promise((resolve, reject) => {
+      if (!chrome.runtime?.id) {
+        reject(new Error("扩展上下文已失效，请刷新页面。"));
+        return;
+      }
 
-    if (settings.mode === "mock") {
-      return sendRuntimeMessage({ type: "ASK", payload, settings });
-    }
+      const settings = window.CGIAStorage.getSettingsSync();
 
-    if (!settings.apiKey?.trim()) {
-      throw new Error("请先在扩展设置中填写 API Key，或将模式切换为 Mock。");
-    }
+      if (settings.mode === "api" && !settings.apiKey?.trim()) {
+        reject(new Error("请先在扩展设置中填写 API Key，或将模式切换为 Mock。"));
+        return;
+      }
 
-    return sendRuntimeMessage({ type: "ASK", payload, settings });
+      let port;
+      try {
+        port = chrome.runtime.connect({ name: "ask-stream" });
+      } catch (err) {
+        reject(err);
+        return;
+      }
+
+      let answer = "";
+
+      port.onMessage.addListener((msg) => {
+        if (msg.type === "chunk") {
+          if (typeof onChunk === "function") {
+            onChunk(msg.delta, msg.full);
+          }
+          answer = msg.full;
+        } else if (msg.type === "done") {
+          resolve({
+            noteId: msg.noteId || payload.noteId,
+            answer: msg.answer || answer,
+            status: msg.status || "completed"
+          });
+          port.disconnect();
+        } else if (msg.type === "error") {
+          reject(new Error(msg.error || "请求失败"));
+          port.disconnect();
+        }
+      });
+
+      port.onDisconnect.addListener(() => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+        }
+      });
+
+      port.postMessage({ type: "ASK_STREAM", payload, settings });
+    });
   }
 
-  window.CGIAApiClient = { askModel };
+  async function askModel(payload) {
+    return askModelStream(payload);
+  }
+
+  window.CGIAApiClient = { askModel, askModelStream };
 })();

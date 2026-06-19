@@ -119,6 +119,17 @@
     const rect = range.getBoundingClientRect();
 
     const messageEl = adapter.getMessageElement(selection);
+    const mainConversation = settings.includeMainConversation
+      ? adapter.getMainConversation(
+          messageEl,
+          settings.mainConversationMaxMessages,
+          800
+        )
+      : [];
+    const sessionContext = window.CGIAAdapterShared.buildSessionContext(
+      adapter,
+      mainConversation
+    );
 
     currentSelectionInfo = {
       siteId: adapter.id,
@@ -130,13 +141,9 @@
         settings.includeFullMessage && messageEl
           ? adapter.getMessageText(messageEl, text, settings.fullMessageMaxLength)
           : "",
-      mainConversation: settings.includeMainConversation
-        ? adapter.getMainConversation(
-            messageEl,
-            settings.mainConversationMaxMessages,
-            800
-          )
-        : [],
+      mainConversation,
+      mainTopic: sessionContext.mainTopic,
+      mainQuestion: sessionContext.mainQuestion,
       rect
     };
 

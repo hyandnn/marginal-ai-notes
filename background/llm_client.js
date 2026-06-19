@@ -15,7 +15,24 @@ function extractErrorMessage(bodyText) {
   return bodyText.slice(0, 200) || "未知错误";
 }
 
+function buildRequestBody(model, prompt, stream) {
+  return {
+    model,
+    messages: [{ role: "user", content: prompt }],
+    max_tokens: 1024,
+    stream: !!stream
+  };
+}
+
 async function askModel(prompt, settings) {
+  let full = "";
+  await askModelStream(prompt, settings, (_delta, accumulated) => {
+    full = accumulated;
+  });
+  return full;
+}
+
+async function askModelStream(prompt, settings, onChunk) {
   const apiKey = (settings.apiKey || "").trim();
   if (!apiKey) {
     throw new Error("请先在扩展设置中填写 API Key。");
@@ -35,33 +52,57 @@ async function askModel(prompt, settings) {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`
       },
-      body: JSON.stringify({
-        model,
-        messages: [{ role: "user", content: prompt }],
-        max_tokens: 1024
-      }),
+      body: JSON.stringify(buildRequestBody(model, prompt, true)),
       signal: controller.signal
     });
 
-    const bodyText = await res.text();
-
     if (!res.ok) {
+      const bodyText = await res.text();
       throw new Error(`模型 API 返回 ${res.status}：${extractErrorMessage(bodyText)}`);
     }
 
-    let data;
-    try {
-      data = JSON.parse(bodyText);
-    } catch (e) {
-      throw new Error("模型 API 返回了无法解析的 JSON。");
+    if (!res.body) {
+      throw new Error("模型 API 未返回可流式读取的响应。");
     }
 
-    const content = data.choices?.[0]?.message?.content;
-    if (!content) {
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let full = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith("data:")) continue;
+
+        const data = trimmed.slice(5).trim();
+        if (data === "[DONE]") continue;
+
+        try {
+          const parsed = JSON.parse(data);
+          const delta = parsed.choices?.[0]?.delta?.content;
+          if (delta) {
+            full += delta;
+            onChunk(delta, full);
+          }
+        } catch (e) {
+          // 跳过无法解析的行
+        }
+      }
+    }
+
+    if (!full) {
       throw new Error("模型 API 未返回有效回答。");
     }
 
-    return content;
+    return full;
   } catch (err) {
     if (err.name === "AbortError") {
       throw new Error("请求超时，请检查网络或稍后重试。");
