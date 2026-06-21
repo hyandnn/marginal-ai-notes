@@ -53,8 +53,12 @@ python3 pipeline_app.py
 
 浏览器打开 **http://127.0.0.1:5179**
 
-- 左侧选 JSONL → 右侧预览将生成哪些 md（含去重 skip）
-- 勾选 merge / force → 执行转换
+- 左侧勾选 JSONL（全选 / **选未处理** / **只看未处理**）
+- 每文件显示 **行数** 与 **已转换状态**（未处理 / 部分 / 已完成）
+- 预览表：主题、URL、write / skip
+- **打开 Record / 打开 Inbox**：在 Finder 中打开目录
+- **开启监视**：新 JSONL 自动转 md
+- 插件 Popup → **打开 Pipeline** 直达
 
 首次使用需安装依赖：
 
@@ -101,5 +105,7 @@ python3 watch_jsonl.py --once
 ## 插件导出设置
 
 Popup → **JSONL 保存子目录** 保持默认 `Record` → 文件在 `~/Downloads/Record/`。
+
+可勾选 **仅导出变更条目**（跳过内容与上次导出相同的便签）。
 
 文件名示例：`chatgpt-20260618-主题.jsonl`（Chrome 偶发改成 `.ndjson`，Pipeline 均支持）。

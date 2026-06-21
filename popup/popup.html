@@ -83,6 +83,10 @@
         <input type="checkbox" id="exportMergeByUrl" />
         同 URL 合并为一条 JSONL
       </label>
+      <label class="cgia-check-label">
+        <input type="checkbox" id="exportOnlyChanged" />
+        仅导出变更条目
+      </label>
     </div>
 
     <div class="cgia-export-preview" id="exportPreview">
@@ -94,6 +98,7 @@
 
     <div class="cgia-form-row cgia-export-actions">
       <button type="button" id="exportJsonlBtn" class="cgia-secondary-btn">导出 JSONL</button>
+      <button type="button" id="openPipelineBtn" class="cgia-secondary-btn">打开 Pipeline</button>
     </div>
     <p id="exportMsg" class="cgia-save-msg"></p>
 

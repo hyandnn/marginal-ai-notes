@@ -392,6 +392,54 @@ def resolve_output_dir(args: argparse.Namespace, config: dict) -> Path:
     return vault / inbox
 
 
+def file_conversion_stats(input_path: Path, output_dir: Path) -> dict:
+    """统计 JSONL 行数与去重状态（不写入）。"""
+    try:
+        records = read_jsonl(input_path)
+    except ValueError as exc:
+        return {
+            "line_count": 0,
+            "skip_count": 0,
+            "write_count": 0,
+            "status": "error",
+            "error": str(exc),
+        }
+
+    if not records:
+        return {
+            "line_count": 0,
+            "skip_count": 0,
+            "write_count": 0,
+            "status": "empty",
+            "error": "",
+        }
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    state = load_pipeline_state(output_dir)
+    skip_count = 0
+    for record in records:
+        skip, _ = should_skip_record(record, state, False)
+        if skip:
+            skip_count += 1
+
+    line_count = len(records)
+    write_count = line_count - skip_count
+    if skip_count == 0:
+        status = "new"
+    elif skip_count >= line_count:
+        status = "done"
+    else:
+        status = "partial"
+
+    return {
+        "line_count": line_count,
+        "skip_count": skip_count,
+        "write_count": write_count,
+        "status": status,
+        "error": "",
+    }
+
+
 def plan_conversion(
     input_path: Path,
     output_dir: Path,
@@ -423,8 +471,12 @@ def plan_conversion(
             {
                 "id": (record.get("id") or "").strip(),
                 "content_hash": compute_content_hash(record),
-                "main_topic": (record.get("main_topic") or "").strip(),
+                "main_topic": (record.get("main_topic") or "").strip() or "（无主题）",
                 "url": (record.get("url") or "").strip(),
+                "source": (record.get("source") or "").strip(),
+                "note_type": (record.get("note_type") or "general").strip(),
+                "selected_preview": ((record.get("selected_text") or "").strip()[:80]),
+                "turn_count": len(record.get("turns") or []) or None,
                 "out_path": str(out_path),
                 "action": "skip" if skip else "write",
                 "reason": reason,

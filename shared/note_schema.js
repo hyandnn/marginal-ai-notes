@@ -117,11 +117,21 @@
   }
 
   function filterNotesForExport(notes, options = {}) {
-    const { excludeEmpty = false, excludeNoFollowups = false } = options;
+    const {
+      excludeEmpty = false,
+      excludeNoFollowups = false,
+      onlyChanged = false
+    } = options;
     return (notes || []).filter((n) => {
       if (n.status === "hidden") return false;
       if (excludeEmpty && noteIsEmpty(n)) return false;
       if (excludeNoFollowups && !noteHasFollowups(n)) return false;
+      if (onlyChanged) {
+        const hash = computeContentHashForNote(n);
+        if (n.lastExportedContentHash && n.lastExportedContentHash === hash) {
+          return false;
+        }
+      }
       return true;
     });
   }

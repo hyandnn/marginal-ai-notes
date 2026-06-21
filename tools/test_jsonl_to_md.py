@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """jsonl_to_md.py 单元测试。"""
 
-import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -9,6 +8,7 @@ from pathlib import Path
 from jsonl_to_md import (
     compute_content_hash,
     convert_file,
+    file_conversion_stats,
     load_pipeline_state,
     merge_records_into_one,
     read_jsonl,
@@ -93,6 +93,11 @@ class JsonlToMdTest(unittest.TestCase):
             self.assertEqual(len(result["written"]), 1)
             state = load_pipeline_state(out_dir)
             self.assertIn(read_jsonl(SAMPLE)[0]["id"], state["processed_ids"])
+
+            stats = file_conversion_stats(SAMPLE, out_dir)
+            self.assertEqual(stats["status"], "done")
+            self.assertEqual(stats["line_count"], 1)
+            self.assertEqual(stats["skip_count"], 1)
 
             second = convert_file(
                 SAMPLE,

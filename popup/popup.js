@@ -27,7 +27,8 @@ const DEFAULT_SETTINGS = {
   fullMessageMaxLength: 4000,
   mainConversationMaxMessages: 6,
   defaultNoteType: "general",
-  jsonlRecordDir: "Record"
+  jsonlRecordDir: "Record",
+  pipelineUrl: "http://127.0.0.1:5179"
 };
 
 let cachedPageUrl = "";
@@ -99,7 +100,8 @@ function readExportOptions() {
   return {
     excludeEmpty: document.getElementById("exportExcludeEmpty").checked,
     excludeNoFollowups: document.getElementById("exportExcludeNoFollowups").checked,
-    mergeByUrl: document.getElementById("exportMergeByUrl").checked
+    mergeByUrl: document.getElementById("exportMergeByUrl").checked,
+    onlyChanged: document.getElementById("exportOnlyChanged").checked
   };
 }
 
@@ -195,6 +197,21 @@ async function getExportSettings() {
   }
 }
 
+async function markNotesExported(notes) {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(NOTES_KEY, (result) => {
+      const all = { ...(result[NOTES_KEY] || {}) };
+      notes.forEach((note) => {
+        const hash = window.CGIANoteSchema.computeContentHashForNote(note);
+        if (all[note.noteId]) {
+          all[note.noteId].lastExportedContentHash = hash;
+        }
+      });
+      chrome.storage.local.set({ [NOTES_KEY]: all }, () => resolve());
+    });
+  });
+}
+
 async function exportPreparedNotes(notes) {
   const options = readExportOptions();
   const records = window.CGIANoteSchema.notesToJsonlRecords(notes, {
@@ -214,6 +231,7 @@ async function exportPreparedNotes(notes) {
     window.CGIANoteSchema.exportFilenameTopic(records),
     settings
   );
+  await markNotesExported(notes);
   return { noteCount: notes.length, lineCount: records.length };
 }
 
@@ -222,7 +240,8 @@ function bindExportPreviewListeners() {
     "exportScope",
     "exportExcludeEmpty",
     "exportExcludeNoFollowups",
-    "exportMergeByUrl"
+    "exportMergeByUrl",
+    "exportOnlyChanged"
   ].forEach((id) => {
     document.getElementById(id).addEventListener("change", () => {
       refreshExportPreview();
@@ -312,6 +331,9 @@ document.getElementById("exportJsonlBtn").addEventListener("click", async () => 
     btn.disabled = true;
     const allNotes = await loadAllNotesFromStorage();
     const notes = prepareExportNotes(allNotes);
+    if (!notes.length) {
+      throw new Error("没有符合条件的便签（可取消「仅导出变更条目」试试）。");
+    }
     const { noteCount, lineCount } = await exportPreparedNotes(notes);
     const scope =
       document.getElementById("exportScope").value === "page" ? "当前页" : "全部";
@@ -319,9 +341,18 @@ document.getElementById("exportJsonlBtn").addEventListener("click", async () => 
       msg,
       `已导出 ${scope} ${noteCount} 条便签（${lineCount} 行 JSONL）到 Record 目录。`
     );
+    refreshExportPreview();
   } catch (e) {
     setMessage(msg, e.message, true);
   } finally {
     btn.disabled = false;
   }
+});
+
+document.getElementById("openPipelineBtn").addEventListener("click", () => {
+  chrome.storage.local.get(SETTINGS_KEY, (result) => {
+    const url =
+      (result[SETTINGS_KEY] || {}).pipelineUrl || DEFAULT_SETTINGS.pipelineUrl;
+    chrome.tabs.create({ url });
+  });
 });

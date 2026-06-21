@@ -24,7 +24,8 @@ Mock 模式无需 Key，可体验 UI。
 1. 打开 [chatgpt.com](https://chatgpt.com) 或 [doubao.com/chat](https://www.doubao.com/chat/)
 2. 在 **AI 回答** 中选中文字 → **旁注追问**
 3. 便签中提问，设置类型/标记/标签
-4. **Save as Note** 或 Popup **导出 JSONL**
+4. **Save as Note** 或 Popup **导出 JSONL**（可勾选「仅导出变更条目」）
+5. Popup **打开 Pipeline** → 可视化转 Markdown
 
 ### 4. 本地笔记（推荐）
 

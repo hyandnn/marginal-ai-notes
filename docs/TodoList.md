@@ -1,27 +1,18 @@
 # 开发任务（可选阅读）
 
-用户向文档见 [`VAULT.md`](VAULT.md)。此处仅记录未完成功能。
+用户向文档见 [`VAULT.md`](VAULT.md)。
 
 ## 已完成
 
-- 插件采集、JSONL 导出、导出预览、同 URL 合并
+- 插件采集、JSONL 导出、导出预览、同 URL 合并、仅导出变更条目
+- Popup 打开 Pipeline 链接
 - 稳定 id、content_hash、转换去重
 - CLI：merge / dry-run / watch
-- Local Note Pipeline MVP（`tools/pipeline_app.py`）
+- Local Note Pipeline：多选批量、topic/url 预览表、watch 开关
+- Pipeline：**Finder 打开 Record/Inbox**、**JSONL 行数与处理状态**、选未处理 / 只看未处理
+- 豆包适配器：更多 DOM 回退选择器
 
 ## 待做
-
-### 插件
-
-- [ ] 豆包 / 新站点 DOM 维护
-- [ ] Popup「仅导出变更条目」
-
-### Pipeline（Phase 4 增强）
-
-- [ ] 批量多选 JSONL 一次转换
-- [ ] 预览显示 topic / url 详情
-- [ ] watch 开关（后台监视 Record）
-- [ ] Popup 链接「打开 Pipeline」
 
 ### 后期
 
