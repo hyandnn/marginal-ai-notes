@@ -62,9 +62,38 @@
       <span class="cgia-field-hint">相对 Chrome 下载目录，默认保存到 ~/Downloads/Record/</span>
     </div>
 
+    <div class="cgia-form-row">
+      <label>导出范围</label>
+      <select id="exportScope">
+        <option value="page">当前页便签</option>
+        <option value="all">全部便签</option>
+      </select>
+    </div>
+
+    <div class="cgia-form-row cgia-export-options">
+      <label class="cgia-check-label">
+        <input type="checkbox" id="exportExcludeEmpty" />
+        排除无选中文本
+      </label>
+      <label class="cgia-check-label">
+        <input type="checkbox" id="exportExcludeNoFollowups" />
+        排除无追问记录
+      </label>
+      <label class="cgia-check-label">
+        <input type="checkbox" id="exportMergeByUrl" />
+        同 URL 合并为一条 JSONL
+      </label>
+    </div>
+
+    <div class="cgia-export-preview" id="exportPreview">
+      <p class="cgia-export-preview-title">导出预览</p>
+      <p class="cgia-export-preview-line" id="exportPreviewCount">—</p>
+      <p class="cgia-export-preview-line" id="exportPreviewTypes">—</p>
+      <p class="cgia-export-preview-line" id="exportPreviewTopics">—</p>
+    </div>
+
     <div class="cgia-form-row cgia-export-actions">
-      <button type="button" id="exportPageBtn" class="cgia-secondary-btn">导出当前页 JSONL</button>
-      <button type="button" id="exportAllBtn" class="cgia-secondary-btn">导出全部 JSONL</button>
+      <button type="button" id="exportJsonlBtn" class="cgia-secondary-btn">导出 JSONL</button>
     </div>
     <p id="exportMsg" class="cgia-save-msg"></p>
 

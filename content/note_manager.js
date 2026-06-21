@@ -159,9 +159,19 @@
   }
 
   function handleSaveAsNote(noteEl, note) {
+    const contentHash = window.CGIANoteSchema.computeContentHashForNote(note);
+    if (note.lastExportedContentHash && note.lastExportedContentHash === contentHash) {
+      showSaveFeedback(noteEl, "内容与上次导出相同，已跳过");
+      return;
+    }
+
     const record = window.CGIANoteSchema.noteToJsonlRecord(note);
     window.CGIAExport.downloadJsonl([record], "note", note.mainTopic || note.selectedText)
-      .then(() => showSaveFeedback(noteEl, "已保存到 Record 目录"))
+      .then(() => {
+        note.lastExportedContentHash = contentHash;
+        persistNote(note);
+        showSaveFeedback(noteEl, "已保存到 Record 目录");
+      })
       .catch((err) => showSaveFeedback(noteEl, err.message, true));
   }
 

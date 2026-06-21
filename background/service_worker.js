@@ -17,11 +17,12 @@ const DEFAULT_SETTINGS = {
 };
 
 async function loadSettings(override) {
-  if (override) {
-    return { ...DEFAULT_SETTINGS, ...override };
+  const stored = await chrome.storage.local.get(SETTINGS_KEY);
+  const base = { ...DEFAULT_SETTINGS, ...(stored[SETTINGS_KEY] || {}) };
+  if (override && Object.keys(override).length > 0) {
+    return { ...base, ...override };
   }
-  const result = await chrome.storage.local.get(SETTINGS_KEY);
-  return { ...DEFAULT_SETTINGS, ...(result[SETTINGS_KEY] || {}) };
+  return base;
 }
 
 function mockAnswer(req) {
@@ -87,12 +88,16 @@ async function handleTestConnection(settingsOverride) {
   };
 }
 
-async function handleDownloadJsonl(records, filenamePrefix, topic, settingsOverride) {
+async function handleDownloadJsonl(records, filenamePrefix, topic, site, settingsOverride) {
   if (!records?.length) {
     throw new Error("没有可导出的记录。");
   }
   const settings = await loadSettings(settingsOverride);
-  const filename = makeExportFilename(filenamePrefix || "notes", topic);
+  const filename = makeExportFilename(
+    filenamePrefix || "notes",
+    topic,
+    site || records[0]?.source || "notes"
+  );
   const content = recordsToJsonlContent(records);
   await downloadJsonlContent(content, filename, settings.jsonlRecordDir);
   return { filename, count: records.length };
@@ -146,6 +151,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       message.records,
       message.filenamePrefix,
       message.topic,
+      message.site,
       message.settings
     )
       .then(sendResponse)

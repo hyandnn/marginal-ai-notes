@@ -30,6 +30,8 @@ const DEFAULT_SETTINGS = {
   jsonlRecordDir: "Record"
 };
 
+let cachedPageUrl = "";
+
 function detectProviderPreset(settings) {
   const base = (settings.apiBaseUrl || "").replace(/\/+$/, "");
   if (base.includes("deepseek.com")) return "deepseek";
@@ -93,6 +95,14 @@ function readForm() {
   };
 }
 
+function readExportOptions() {
+  return {
+    excludeEmpty: document.getElementById("exportExcludeEmpty").checked,
+    excludeNoFollowups: document.getElementById("exportExcludeNoFollowups").checked,
+    mergeByUrl: document.getElementById("exportMergeByUrl").checked
+  };
+}
+
 function setMessage(el, text, isError = false) {
   el.textContent = text;
   el.style.color = isError ? "#c0392b" : "#2e7d32";
@@ -109,26 +119,115 @@ function loadAllNotesFromStorage() {
   });
 }
 
+function notesForExportScope(notes, scope) {
+  if (scope === "all") return notes;
+  return notes.filter((n) => n.pageUrl === cachedPageUrl);
+}
+
+function prepareExportNotes(allNotes) {
+  const scope = document.getElementById("exportScope").value;
+  const options = readExportOptions();
+  const scoped = notesForExportScope(allNotes, scope);
+  return window.CGIANoteSchema.filterNotesForExport(scoped, options);
+}
+
+function formatTypeSummary(typeCounts) {
+  const labels = window.CGIANoteSchema.NOTE_TYPE_LABELS;
+  const entries = Object.entries(typeCounts || {});
+  if (!entries.length) return "类型：—";
+  const parts = entries.map(([k, v]) => `${labels[k] || k} ${v}`);
+  return `类型：${parts.join(" · ")}`;
+}
+
+function formatTopicSummary(preview) {
+  if (!preview.topics.length) return "主话题：—";
+  let text = preview.topics.join("、");
+  if (preview.moreTopics > 0) {
+    text += ` 等 ${preview.topics.length + preview.moreTopics} 个`;
+  }
+  return `主话题：${text}`;
+}
+
+async function refreshExportPreview() {
+  const notes = await loadAllNotesFromStorage();
+  const filtered = prepareExportNotes(notes);
+  const mergeByUrl = readExportOptions().mergeByUrl;
+  const preview = window.CGIANoteSchema.buildExportPreviewWithMerge(filtered, mergeByUrl);
+
+  const scopeLabel =
+    document.getElementById("exportScope").value === "page" ? "当前页" : "全部";
+  const lineInfo =
+    mergeByUrl && preview.mergeGroups
+      ? `${preview.count} 条便签 → ${preview.jsonlLines} 行 JSONL（${preview.mergeGroups} 组合并）`
+      : `${preview.count} 条便签 → ${preview.jsonlLines} 行 JSONL`;
+
+  document.getElementById("exportPreviewCount").textContent = `${scopeLabel}：${lineInfo}`;
+  document.getElementById("exportPreviewTypes").textContent = formatTypeSummary(
+    preview.typeCounts
+  );
+  document.getElementById("exportPreviewTopics").textContent = formatTopicSummary(preview);
+}
+
 async function refreshNoteCount() {
   const notes = await loadAllNotesFromStorage();
   const visible = notes.filter((n) => n.status !== "hidden");
 
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    const url = tabs[0]?.url || "";
-    const pageCount = visible.filter((n) => n.pageUrl === url).length;
+    cachedPageUrl = tabs[0]?.url || "";
+    const pageCount = visible.filter((n) => n.pageUrl === cachedPageUrl).length;
     document.getElementById("noteCount").textContent =
       `便签：共 ${visible.length} 条（当前页 ${pageCount} 条）`;
+    refreshExportPreview();
   });
 }
 
-function exportNotesList(notes, prefix) {
-  const visible = notes.filter((n) => n.status !== "hidden");
-  if (visible.length === 0) {
+async function getExportSettings() {
+  const stored = await new Promise((resolve) => {
+    chrome.storage.local.get(SETTINGS_KEY, (result) => {
+      resolve({ ...DEFAULT_SETTINGS, ...(result[SETTINGS_KEY] || {}) });
+    });
+  });
+  try {
+    const form = readForm();
+    return { ...stored, jsonlRecordDir: form.jsonlRecordDir };
+  } catch {
+    return stored;
+  }
+}
+
+async function exportPreparedNotes(notes) {
+  const options = readExportOptions();
+  const records = window.CGIANoteSchema.notesToJsonlRecords(notes, {
+    mergeByUrl: options.mergeByUrl
+  });
+  if (!records.length) {
     throw new Error("没有可导出的便签。");
   }
-  const records = visible.map((n) => window.CGIANoteSchema.noteToJsonlRecord(n));
-  const topic = records.length === 1 ? records[0].main_topic : "notes";
-  return window.CGIAExport.downloadJsonl(records, prefix, topic).then(() => visible.length);
+
+  const scope = document.getElementById("exportScope").value;
+  const prefix = scope === "page" ? "page" : "notes";
+  const settings = await getExportSettings();
+
+  await window.CGIAExport.downloadJsonl(
+    records,
+    prefix,
+    window.CGIANoteSchema.exportFilenameTopic(records),
+    settings
+  );
+  return { noteCount: notes.length, lineCount: records.length };
+}
+
+function bindExportPreviewListeners() {
+  [
+    "exportScope",
+    "exportExcludeEmpty",
+    "exportExcludeNoFollowups",
+    "exportMergeByUrl"
+  ].forEach((id) => {
+    document.getElementById(id).addEventListener("change", () => {
+      refreshExportPreview();
+    });
+  });
 }
 
 document.getElementById("providerPreset").addEventListener("change", (e) => {
@@ -142,6 +241,7 @@ chrome.storage.local.get(SETTINGS_KEY, (result) => {
   const settings = { ...DEFAULT_SETTINGS, ...(result[SETTINGS_KEY] || {}) };
   loadForm(settings);
   refreshNoteCount();
+  bindExportPreviewListeners();
 });
 
 document.getElementById("saveBtn").addEventListener("click", () => {
@@ -205,29 +305,23 @@ document.getElementById("testBtn").addEventListener("click", () => {
   }
 });
 
-document.getElementById("exportAllBtn").addEventListener("click", async () => {
+document.getElementById("exportJsonlBtn").addEventListener("click", async () => {
   const msg = document.getElementById("exportMsg");
+  const btn = document.getElementById("exportJsonlBtn");
   try {
-    const notes = await loadAllNotesFromStorage();
-    const count = await exportNotesList(notes, "notes");
-    setMessage(msg, `已保存 ${count} 条到 Record 目录。`);
+    btn.disabled = true;
+    const allNotes = await loadAllNotesFromStorage();
+    const notes = prepareExportNotes(allNotes);
+    const { noteCount, lineCount } = await exportPreparedNotes(notes);
+    const scope =
+      document.getElementById("exportScope").value === "page" ? "当前页" : "全部";
+    setMessage(
+      msg,
+      `已导出 ${scope} ${noteCount} 条便签（${lineCount} 行 JSONL）到 Record 目录。`
+    );
   } catch (e) {
     setMessage(msg, e.message, true);
-  }
-});
-
-document.getElementById("exportPageBtn").addEventListener("click", async () => {
-  const msg = document.getElementById("exportMsg");
-  try {
-    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-    const url = tabs[0]?.url;
-    if (!url) throw new Error("无法获取当前页面 URL。");
-
-    const notes = await loadAllNotesFromStorage();
-    const pageNotes = notes.filter((n) => n.pageUrl === url);
-    const count = await exportNotesList(pageNotes, "page");
-    setMessage(msg, `已保存当前页 ${count} 条到 Record 目录。`);
-  } catch (e) {
-    setMessage(msg, e.message, true);
+  } finally {
+    btn.disabled = false;
   }
 });
