@@ -14,16 +14,11 @@ import sys
 import time
 from pathlib import Path
 
-from jsonl_to_md import convert_file, load_yaml_config, resolve_output_dir
+from jsonl_to_md import convert_file, list_record_jsonl_paths, load_yaml_config, resolve_output_dir
 
 
 def list_jsonl_files(record_dir: Path) -> set[Path]:
-    if not record_dir.exists():
-        return set()
-    files: set[Path] = set()
-    for pattern in ("*.jsonl", "*.ndjson"):
-        files.update(p.resolve() for p in record_dir.glob(pattern) if p.is_file())
-    return files
+    return list_record_jsonl_paths(record_dir)
 
 
 def build_parser() -> argparse.ArgumentParser:

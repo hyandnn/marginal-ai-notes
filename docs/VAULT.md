@@ -108,4 +108,6 @@ Popup → **JSONL 保存子目录** 保持默认 `Record` → 文件在 `~/Downl
 
 可勾选 **仅导出变更条目**（跳过内容与上次导出相同的便签）。
 
-文件名示例：`chatgpt-20260618-主题.jsonl`（Chrome 偶发改成 `.ndjson`，Pipeline 均支持）。
+文件名示例：`chatgpt-20260618-主题.jsonl`
+
+Chrome 可能把后缀改成 `.ndjson` 或 `.txt`，Pipeline 均支持（内容为 JSONL 即可）。

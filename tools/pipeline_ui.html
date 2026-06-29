@@ -327,7 +327,7 @@
           ? `显示 ${shown.length} / ${files.length} 个文件`
           : filterPendingOnly
             ? "没有未处理的 JSONL"
-            : "Record 目录下暂无 .jsonl / .ndjson";
+            : "Record 目录下暂无可识别的 JSONL（支持 .jsonl / .ndjson / 含 JSON 的 .txt）";
         $("filterPendingBtn").classList.toggle("watch-on", filterPendingOnly);
         updateSelUI();
       }

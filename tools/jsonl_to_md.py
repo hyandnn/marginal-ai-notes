@@ -66,6 +66,38 @@ def read_jsonl(path: Path) -> list[dict]:
     return records
 
 
+RECORD_FILE_GLOBS = ("*.jsonl", "*.ndjson", "*.txt")
+
+
+def looks_like_jsonl_file(path: Path) -> bool:
+    suffix = path.suffix.lower()
+    if suffix in (".jsonl", ".ndjson"):
+        return True
+    if suffix != ".txt":
+        return False
+    try:
+        for line in path.read_text(encoding="utf-8").splitlines():
+            text = line.strip()
+            if not text:
+                continue
+            obj = json.loads(text)
+            return isinstance(obj, dict) and obj.get("schema_version") is not None
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+        return False
+    return False
+
+
+def list_record_jsonl_paths(record_dir: Path) -> set[Path]:
+    if not record_dir.exists():
+        return set()
+    paths: set[Path] = set()
+    for pattern in RECORD_FILE_GLOBS:
+        for candidate in record_dir.glob(pattern):
+            if candidate.is_file() and looks_like_jsonl_file(candidate):
+                paths.add(candidate.resolve())
+    return paths
+
+
 def sanitize_filename(text: str, max_len: int = 40) -> str:
     cleaned = re.sub(r'[\\/:*?"<>|]', "_", text or "未命名")
     cleaned = re.sub(r"\s+", "_", cleaned).strip("._")

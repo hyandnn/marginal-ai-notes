@@ -31,15 +31,15 @@ function uint8ToBase64(bytes) {
 function makeJsonlDataUrl(content) {
   const bytes = new TextEncoder().encode(content || "");
   const b64 = uint8ToBase64(bytes);
-  // 用 text/plain 避免 Chrome 按 MIME 把后缀改成 .ndjson
-  return `data:text/plain;charset=utf-8;base64,${b64}`;
+  // octet-stream 避免 Chrome 把后缀改成 .ndjson 或 .txt
+  return `data:application/octet-stream;base64,${b64}`;
 }
 
 function downloadJsonlContent(content, filename, recordDir) {
   const hasBlobUrl = typeof URL !== "undefined" && typeof URL.createObjectURL === "function";
   const url = hasBlobUrl
     ? URL.createObjectURL(
-        new Blob([content], { type: "text/plain;charset=utf-8" })
+        new Blob([content], { type: "application/octet-stream" })
       )
     : makeJsonlDataUrl(content);
   const dir = (recordDir || "Record").replace(/^\/+|\/+$/g, "");

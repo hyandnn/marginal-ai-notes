@@ -26,6 +26,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from jsonl_to_md import (
     convert_file,
     file_conversion_stats,
+    list_record_jsonl_paths,
     load_yaml_config,
     plan_conversion,
     resolve_output_dir,
@@ -53,16 +54,8 @@ def get_default_output_dir(cfg: dict) -> Path:
     return resolve_output_dir(type("Args", (), {"output": None})(), cfg)
 
 
-JSONL_GLOBS = ("*.jsonl", "*.ndjson")
-
-
 def list_jsonl_paths(record_dir: Path) -> set[Path]:
-    if not record_dir.exists():
-        return set()
-    paths: set[Path] = set()
-    for pattern in JSONL_GLOBS:
-        paths.update(p.resolve() for p in record_dir.glob(pattern) if p.is_file())
-    return paths
+    return list_record_jsonl_paths(record_dir)
 
 
 def open_in_file_manager(path: Path) -> None:

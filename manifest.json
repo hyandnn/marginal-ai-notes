@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Agent Sidenote",
-  "version": "1.4.2",
+  "version": "1.4.3",
   "description": "在 AI 对话网页选中文字，用便签旁注追问并导出笔记。支持 ChatGPT、豆包。",
   "permissions": ["storage", "tabs", "downloads"],
   "host_permissions": [
