@@ -14,7 +14,7 @@
 
 ## 使用
 
-1. 打开 [chatgpt.com](https://chatgpt.com) 或 [doubao.com/chat](https://www.doubao.com/chat/)
+1. 打开 [chatgpt.com](https://chatgpt.com)、[doubao.com/chat](https://www.doubao.com/chat/) 或 [gemini.google.com](https://gemini.google.com/)
 2. 在 AI 回答中选中文字 → **旁注追问**
 3. 便签中提问，设置类型 / 标记 / 标签
 4. **Save as Note** 或 Popup **导出 Markdown**
