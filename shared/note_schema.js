@@ -22,6 +22,7 @@
   const VALID_MARKS = new Set(MARKS.map((m) => m.value));
 
   const NOTE_TYPE_LABELS = Object.fromEntries(NOTE_TYPES.map((t) => [t.value, t.label]));
+  const MARK_LABELS = Object.fromEntries(MARKS.map((m) => [m.value, m.label]));
 
   function simpleHash(str) {
     let h = 2166136261;
@@ -164,7 +165,7 @@
       topics: topics.slice(0, 8),
       moreTopics: Math.max(0, topics.length - 8),
       mergeableUrls,
-      jsonlLines: notes.length
+      mdFiles: notes.length
     };
   }
 
@@ -175,7 +176,7 @@
     const groups = groupNotesByUrl(notes);
     return {
       ...base,
-      jsonlLines: groups.length,
+      mdFiles: groups.length,
       mergeGroups: groups.filter((g) => g.notes.length > 1).length
     };
   }
@@ -300,6 +301,210 @@
     return "multi";
   }
 
+  function parseTime(iso) {
+    const d = iso ? new Date(iso) : new Date();
+    return Number.isNaN(d.getTime()) ? new Date() : d;
+  }
+
+  function formatFilenameTimestamp(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    const h = String(date.getHours()).padStart(2, "0");
+    const min = String(date.getMinutes()).padStart(2, "0");
+    return `${y}${m}${day}-${h}${min}`;
+  }
+
+  function formatDisplayTimestamp(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    const h = String(date.getHours()).padStart(2, "0");
+    const min = String(date.getMinutes()).padStart(2, "0");
+    return `${y}-${m}-${day} ${h}:${min}`;
+  }
+
+  function sanitizeFilename(str, maxLen = 40) {
+    const safe = (str || "")
+      .replace(/[\\/:*?"<>|]/g, "_")
+      .replace(/\s+/g, "_")
+      .slice(0, maxLen);
+    return safe || "未命名";
+  }
+
+  function validateMdExportDir(dir) {
+    const trimmed = (dir || "").trim();
+    if (!trimmed) return { ok: true, dir: "Notes" };
+    if (/^[\\/]|^[A-Za-z]:/.test(trimmed)) {
+      return {
+        ok: false,
+        error: "不能使用绝对路径，请填写相对 Chrome 下载目录的子路径。"
+      };
+    }
+    if (trimmed.includes("..")) {
+      return {
+        ok: false,
+        error:
+          "Chrome 不允许 .. 跳目录。若要保存到 ~/Note/00_Inbox，请先在终端执行：ln -s ~/Note/00_Inbox ~/Downloads/Note/00_Inbox，然后填写 Note/00_Inbox。"
+      };
+    }
+    if (/[<>:"|?*]/.test(trimmed)) {
+      return { ok: false, error: "路径包含非法字符。" };
+    }
+    const normalized = trimmed.replace(/^\/+|\/+$/g, "").replace(/\\/g, "/");
+    return { ok: true, dir: normalized };
+  }
+
+  function renderFrontMatter(record, created) {
+    const tags = record.tags || [];
+    const marks = record.marks || [];
+    const contentHash = computeContentHashForRecord(record);
+    const lines = [
+      "---",
+      `source: ${record.source || "unknown"}`,
+      `url: ${record.url || ""}`,
+      `type: ${record.note_type || "general"}`,
+      `id: ${record.id || ""}`,
+      `content_hash: ${contentHash}`,
+      `created: ${created.toISOString()}`
+    ];
+    if (tags.length) {
+      lines.push("tags:");
+      tags.forEach((t) => lines.push(`  - ${t}`));
+    }
+    if (marks.length) {
+      lines.push("marks:");
+      marks.forEach((m) => lines.push(`  - ${m}`));
+    }
+    lines.push("---");
+    return lines.join("\n");
+  }
+
+  function renderFollowupsSection(followups) {
+    const parts = ["## 追问记录", ""];
+    if (followups?.length) {
+      followups.forEach((item) => {
+        const q = (item.q || "").trim();
+        const a = (item.a || "").trim();
+        if (q) {
+          parts.push(`### ${q}`, "");
+        }
+        if (a) {
+          parts.push(a, "");
+        }
+      });
+    } else {
+      parts.push("（暂无旁注追问）", "");
+    }
+    return parts;
+  }
+
+  function renderSelectedSection(selected) {
+    if (!(selected || "").trim()) return [];
+    const parts = ["## 选中的原文", ""];
+    selected.split("\n").forEach((line) => {
+      parts.push(line ? `> ${line}` : ">");
+    });
+    parts.push("");
+    return parts;
+  }
+
+  function renderTurnSection(turn, index) {
+    const created = parseTime(turn.time);
+    const stamp = formatDisplayTimestamp(created);
+    const noteType = turn.note_type || "general";
+    const marks = turn.marks || [];
+    const selected = (turn.selected_text || "").trim();
+    const parts = [`## 便签 ${index} · ${stamp}`, ""];
+
+    if (selected) {
+      parts.push(...renderSelectedSection(selected));
+    }
+    parts.push(...renderFollowupsSection(turn.followups || []));
+
+    const meta = [`- 类型：${NOTE_TYPE_LABELS[noteType] || noteType}`];
+    if (marks.length) {
+      meta.push(`- 标记：${marks.map((m) => MARK_LABELS[m] || m).join("、")}`);
+    }
+    if (turn.tags?.length) {
+      meta.push(`- 标签：${turn.tags.join(", ")}`);
+    }
+    if (turn.id) {
+      meta.push(`- 记录 id：${turn.id}`);
+    }
+    parts.push("### 元数据", "", ...meta, "");
+    return parts;
+  }
+
+  function renderMarkdown(record) {
+    const created = parseTime(record.time);
+    const topic = (record.main_topic || "未命名对话").trim();
+    const mainQuestion = (record.main_question || "").trim();
+    const selected = (record.selected_text || "").trim();
+    const noteType = record.note_type || "general";
+    const marks = record.marks || [];
+    const followups = record.followups || [];
+    const turns = record.turns || [];
+
+    const parts = [renderFrontMatter(record, created), "", `# ${topic}`, ""];
+
+    if (mainQuestion) {
+      parts.push("## 主问题", "", mainQuestion, "");
+    }
+
+    if (turns.length) {
+      turns.forEach((turn, idx) => {
+        parts.push(...renderTurnSection(turn, idx + 1));
+      });
+    } else {
+      if (selected) {
+        parts.push(...renderSelectedSection(selected));
+      }
+      parts.push(...renderFollowupsSection(followups));
+    }
+
+    const metaLines = [
+      `- 类型：${NOTE_TYPE_LABELS[noteType] || noteType}`,
+      `- 来源：${record.source || "unknown"}`
+    ];
+    if (marks.length) {
+      metaLines.push(`- 标记：${marks.map((m) => MARK_LABELS[m] || m).join("、")}`);
+    }
+    if (record.url) {
+      metaLines.push(`- 对话链接：${record.url}`);
+    }
+    if (turns.length) {
+      metaLines.push(`- 便签数：${turns.length}`);
+    }
+    parts.push("## 元数据", "", ...metaLines, "");
+
+    if (marks.includes("todo") || noteType === "todo") {
+      parts.push("## TODO", "", "- [ ] （在此补充待办）", "");
+    }
+
+    return `${parts.join("\n").trim()}\n`;
+  }
+
+  function markdownOutputFilename(record, suffix = "") {
+    const created = parseTime(record.time);
+    const stamp = formatFilenameTimestamp(created);
+    const topic = sanitizeFilename(record.main_topic || "未命名");
+    const recId = sanitizeFilename((record.id || "").replace("rec_", ""), 12);
+    const extra = suffix ? `-${suffix}` : "";
+    return `${stamp}-${topic}-${recId}${extra}.md`;
+  }
+
+  function noteToMarkdown(note) {
+    return renderMarkdown(noteToJsonlRecord(note));
+  }
+
+  function notesToMarkdownFiles(notes, options = {}) {
+    return notesToJsonlRecords(notes, options).map((record) => ({
+      filename: markdownOutputFilename(record),
+      content: renderMarkdown(record)
+    }));
+  }
+
   function normalizeNote(note, defaults = {}) {
     return {
       ...note,
@@ -338,6 +543,11 @@
     notesToJsonlRecords,
     exportFilenameTopic,
     exportFilenameSite,
+    renderMarkdown,
+    markdownOutputFilename,
+    noteToMarkdown,
+    notesToMarkdownFiles,
+    validateMdExportDir,
     normalizeNote
   };
 })();

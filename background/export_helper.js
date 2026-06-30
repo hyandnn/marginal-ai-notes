@@ -1,23 +1,3 @@
-function makeExportFilename(prefix, topic, site) {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  const safeSite = (site || "notes")
-    .replace(/[\\/:*?"<>|]/g, "_")
-    .replace(/\s+/g, "_")
-    .slice(0, 16);
-  const safe = (topic || "notes")
-    .replace(/[\\/:*?"<>|]/g, "_")
-    .replace(/\s+/g, "_")
-    .slice(0, 30);
-  return `${safeSite}-${y}${m}${day}-${safe}.jsonl`;
-}
-
-function recordsToJsonlContent(records) {
-  return records.map((r) => JSON.stringify(r)).join("\n") + "\n";
-}
-
 function uint8ToBase64(bytes) {
   let binary = "";
   const chunkSize = 0x8000;
@@ -28,21 +8,31 @@ function uint8ToBase64(bytes) {
   return btoa(binary);
 }
 
-function makeJsonlDataUrl(content) {
+function makeMarkdownDataUrl(content) {
   const bytes = new TextEncoder().encode(content || "");
   const b64 = uint8ToBase64(bytes);
-  // octet-stream 避免 Chrome 把后缀改成 .ndjson 或 .txt
-  return `data:application/octet-stream;base64,${b64}`;
+  return `data:text/markdown;charset=utf-8;base64,${b64}`;
 }
 
-function downloadJsonlContent(content, filename, recordDir) {
+function normalizeExportDir(exportDir) {
+  const raw = (exportDir || "Notes").trim();
+  if (raw.includes("..")) {
+    throw new Error(
+      "保存路径不能包含 ..。若要写入 ~/Note/00_Inbox，请用符号链接：ln -s ~/Note/00_Inbox ~/Downloads/Note/00_Inbox，然后填写 Note/00_Inbox。"
+    );
+  }
+  if (/^[\\/]|^[A-Za-z]:/.test(raw)) {
+    throw new Error("保存路径必须是相对 Chrome 下载目录的子路径。");
+  }
+  return raw.replace(/^\/+|\/+$/g, "").replace(/\\/g, "/") || "Notes";
+}
+
+function downloadMarkdownContent(content, filename, exportDir) {
   const hasBlobUrl = typeof URL !== "undefined" && typeof URL.createObjectURL === "function";
   const url = hasBlobUrl
-    ? URL.createObjectURL(
-        new Blob([content], { type: "application/octet-stream" })
-      )
-    : makeJsonlDataUrl(content);
-  const dir = (recordDir || "Record").replace(/^\/+|\/+$/g, "");
+    ? URL.createObjectURL(new Blob([content], { type: "text/markdown;charset=utf-8" }))
+    : makeMarkdownDataUrl(content);
+  const dir = normalizeExportDir(exportDir);
   const path = dir ? `${dir}/${filename}` : filename;
 
   return new Promise((resolve, reject) => {

@@ -8,8 +8,6 @@
     const oldUrl = currentUrl;
     currentUrl = newUrl;
 
-    console.log("[CGIA] route changed:", oldUrl, "->", newUrl);
-
     window.CGIANoteManager.clearNotesForPage(oldUrl);
     window.CGIANoteManager.loadNotesForPage(newUrl);
     window.CGIASelection.hideSelectionButton();

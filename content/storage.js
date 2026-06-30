@@ -17,7 +17,7 @@
     fullMessageMaxLength: 4000,
     mainConversationMaxMessages: 6,
     defaultNoteType: "general",
-    jsonlRecordDir: "Record"
+    mdExportDir: "Notes"
   };
 
   let cachedSettings = { ...DEFAULT_SETTINGS };
@@ -61,7 +61,6 @@
     chrome.storage.onChanged.addListener((changes, area) => {
       if (area === "local" && changes[SETTINGS_KEY]) {
         cachedSettings = { ...DEFAULT_SETTINGS, ...(changes[SETTINGS_KEY].newValue || {}) };
-        console.log("[CGIA-SA] settings updated:", cachedSettings.mode);
       }
     });
   } catch (e) {

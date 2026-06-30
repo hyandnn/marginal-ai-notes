@@ -1,5 +1,5 @@
 (function () {
-  function downloadJsonlViaBackground(records, filenamePrefix, topic, settings, site) {
+  function downloadMarkdownViaBackground(files, settings) {
     return new Promise((resolve, reject) => {
       if (!chrome.runtime?.id) {
         reject(new Error("扩展上下文已失效。"));
@@ -8,11 +8,8 @@
 
       chrome.runtime.sendMessage(
         {
-          type: "DOWNLOAD_JSONL",
-          records,
-          filenamePrefix: filenamePrefix || "notes",
-          topic: topic || "notes",
-          site: site || "notes",
+          type: "DOWNLOAD_MD",
+          files,
           settings: settings || null
         },
         (response) => {
@@ -30,15 +27,10 @@
     });
   }
 
-  function downloadJsonl(records, filenamePrefix, topic, settings, site) {
-    if (!records || records.length === 0) {
+  function downloadMarkdown(files, settings) {
+    if (!files?.length) {
       return Promise.reject(new Error("没有可导出的记录。"));
     }
-
-    const resolvedSite =
-      site || window.CGIANoteSchema?.exportFilenameSite(records) || "notes";
-    const resolvedTopic =
-      topic || window.CGIANoteSchema?.exportFilenameTopic(records) || "notes";
 
     let resolvedSettings = settings;
     if (resolvedSettings == null && typeof window !== "undefined" && window.CGIAStorage) {
@@ -46,19 +38,13 @@
     }
 
     if (typeof chrome !== "undefined" && chrome.runtime?.id) {
-      return downloadJsonlViaBackground(
-        records,
-        filenamePrefix,
-        resolvedTopic,
-        resolvedSettings,
-        resolvedSite
-      );
+      return downloadMarkdownViaBackground(files, resolvedSettings);
     }
 
     return Promise.reject(new Error("当前环境无法保存文件，请在扩展 Popup 中导出。"));
   }
 
   window.CGIAExport = {
-    downloadJsonl
+    downloadMarkdown
   };
 })();

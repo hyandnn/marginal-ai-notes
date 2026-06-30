@@ -13,7 +13,7 @@ const DEFAULT_SETTINGS = {
   apiModel: "deepseek-chat",
   apiBaseUrl: "https://api.deepseek.com",
   requestTimeoutMs: 30000,
-  jsonlRecordDir: "Record"
+  mdExportDir: "Notes"
 };
 
 async function loadSettings(override) {
@@ -88,19 +88,27 @@ async function handleTestConnection(settingsOverride) {
   };
 }
 
-async function handleDownloadJsonl(records, filenamePrefix, topic, site, settingsOverride) {
-  if (!records?.length) {
+function resolveMdExportDir(settings) {
+  return settings.mdExportDir || settings.jsonlRecordDir || "Notes";
+}
+
+async function handleDownloadMd(files, settingsOverride) {
+  if (!files?.length) {
     throw new Error("没有可导出的记录。");
   }
   const settings = await loadSettings(settingsOverride);
-  const filename = makeExportFilename(
-    filenamePrefix || "notes",
-    topic,
-    site || records[0]?.source || "notes"
-  );
-  const content = recordsToJsonlContent(records);
-  await downloadJsonlContent(content, filename, settings.jsonlRecordDir);
-  return { filename, count: records.length };
+  const exportDir = resolveMdExportDir(settings);
+  const filenames = [];
+
+  for (const file of files) {
+    if (!file?.content || !file?.filename) {
+      throw new Error("导出文件格式无效。");
+    }
+    await downloadMarkdownContent(file.content, file.filename, exportDir);
+    filenames.push(file.filename);
+  }
+
+  return { filenames, count: filenames.length };
 }
 
 chrome.runtime.onConnect.addListener((port) => {
@@ -146,14 +154,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true;
   }
 
-  if (message.type === "DOWNLOAD_JSONL") {
-    handleDownloadJsonl(
-      message.records,
-      message.filenamePrefix,
-      message.topic,
-      message.site,
-      message.settings
-    )
+  if (message.type === "DOWNLOAD_MD") {
+    handleDownloadMd(message.files, message.settings)
       .then(sendResponse)
       .catch((err) => sendResponse({ error: err.message || String(err) }));
     return true;

@@ -176,7 +176,7 @@
           window.CGIANoteManager.createNote(currentSelectionInfo);
         }
       } catch (err) {
-        console.error("[CGIA-SA] createNote failed:", err);
+        // createNote failed silently
       }
       hideSelectionButton();
     });
@@ -188,11 +188,8 @@
   function initSelection() {
     const adapter = getAdapter();
     if (!adapter) {
-      console.log("[CGIA-SA] no site adapter for:", location.hostname);
       return;
     }
-
-    console.log("[CGIA-SA] site adapter:", adapter.id);
 
     document.addEventListener("mouseup", onMouseUp);
     document.addEventListener("mousedown", (e) => {

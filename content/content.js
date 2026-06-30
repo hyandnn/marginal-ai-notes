@@ -1,5 +1,3 @@
-console.log("[CGIA-SA] content script loaded");
-
 (async function init() {
   await window.CGIAStorage.loadSettings();
   window.CGIASelection.initSelection();

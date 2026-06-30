@@ -1,4 +1,1 @@
 .DS_Store
-tools/config.yaml
-tools/__pycache__/
-*.pyc

@@ -165,12 +165,15 @@
       return;
     }
 
-    const record = window.CGIANoteSchema.noteToJsonlRecord(note);
-    window.CGIAExport.downloadJsonl([record], "note", note.mainTopic || note.selectedText)
+    const content = window.CGIANoteSchema.noteToMarkdown(note);
+    const filename = window.CGIANoteSchema.markdownOutputFilename(
+      window.CGIANoteSchema.noteToJsonlRecord(note)
+    );
+    window.CGIAExport.downloadMarkdown([{ content, filename }])
       .then(() => {
         note.lastExportedContentHash = contentHash;
         persistNote(note);
-        showSaveFeedback(noteEl, "已保存到 Record 目录");
+        showSaveFeedback(noteEl, "已保存 Markdown 文件");
       })
       .catch((err) => showSaveFeedback(noteEl, err.message, true));
   }

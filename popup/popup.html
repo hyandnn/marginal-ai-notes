@@ -57,9 +57,9 @@
     </div>
 
     <div class="cgia-form-row">
-      <label>JSONL 保存子目录</label>
-      <input type="text" id="jsonlRecordDir" placeholder="Record" />
-      <span class="cgia-field-hint">相对 Chrome 下载目录，默认保存到 ~/Downloads/Record/</span>
+      <label>Markdown 保存子目录</label>
+      <input type="text" id="mdExportDir" placeholder="Notes" />
+      <span class="cgia-field-hint">相对 Chrome 下载目录；写入 ~/Note/00_Inbox 见 README</span>
     </div>
 
     <div class="cgia-form-row">
@@ -81,7 +81,7 @@
       </label>
       <label class="cgia-check-label">
         <input type="checkbox" id="exportMergeByUrl" />
-        同 URL 合并为一条 JSONL
+        同 URL 合并为一个 Markdown 文件
       </label>
       <label class="cgia-check-label">
         <input type="checkbox" id="exportOnlyChanged" />
@@ -97,8 +97,7 @@
     </div>
 
     <div class="cgia-form-row cgia-export-actions">
-      <button type="button" id="exportJsonlBtn" class="cgia-secondary-btn">导出 JSONL</button>
-      <button type="button" id="openPipelineBtn" class="cgia-secondary-btn">打开 Pipeline</button>
+      <button type="button" id="exportMdBtn" class="cgia-secondary-btn">导出 Markdown</button>
     </div>
     <p id="exportMsg" class="cgia-save-msg"></p>
 
@@ -141,14 +140,14 @@
     </div>
 
     <p class="cgia-tip">
-      API Key 仅保存在本机浏览器中。导出的 JSONL 含你选中的文本、旁注追问与标记，格式见 docs/jsonl-schema.md。
+      API Key 仅保存在本机浏览器中。导出的 Markdown 含你选中的文本、旁注追问与标记。
     </p>
 
     <button id="saveBtn">保存设置</button>
     <p id="saveMsg" class="cgia-save-msg"></p>
 
     <script src="../shared/note_schema.js"></script>
-    <script src="../shared/export_jsonl.js"></script>
+    <script src="../shared/export.js"></script>
     <script src="./popup.js"></script>
   </body>
 </html>
